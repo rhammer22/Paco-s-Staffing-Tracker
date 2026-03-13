@@ -20,11 +20,12 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Paco's Tracker</title>
+<title>Paco's Staffing Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -582,9 +583,46 @@
   .admin-add-btn:hover { background: var(--color-accent-hover); }
 
   /* ─── Admin Summary Table ─── */
+  .summary-table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .summary-table-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+  .summary-table-header .week-range {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    font-weight: 400;
+  }
+  .download-week-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--color-accent);
+    background: none;
+    color: var(--color-accent);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .download-week-btn:hover {
+    background: var(--color-accent);
+    color: #fff;
+  }
+
   .summary-table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+    border: 1px solid var(--color-border-light);
   }
 
   .summary-table {
@@ -602,13 +640,25 @@
     white-space: nowrap;
   }
 
-  .summary-table th {
+  .summary-table thead th {
     background: var(--color-bg);
     font-weight: 600;
-    font-size: 12px;
+    font-size: 11px;
     color: var(--color-text-secondary);
     position: sticky;
     top: 0;
+    height: 80px;
+    vertical-align: bottom;
+    padding-bottom: 8px;
+  }
+
+  .summary-table thead th .rotated-header {
+    display: inline-block;
+    transform: rotate(-45deg);
+    transform-origin: left bottom;
+    white-space: nowrap;
+    width: 1.5em;
+    margin-left: 10px;
   }
 
   .summary-table th:first-child,
@@ -626,11 +676,30 @@
     z-index: 2;
   }
 
+  .summary-table tbody tr:nth-child(even) {
+    background: var(--color-bg);
+  }
+  .summary-table tbody tr:nth-child(even) td:first-child {
+    background: var(--color-bg);
+  }
+  .summary-table tbody tr:nth-child(odd) td:first-child {
+    background: var(--color-surface);
+  }
+
   .summary-table td.has-val { background: var(--color-accent-light); font-weight: 600; }
   .summary-table td.has-forecast { background: var(--color-forecast-light); font-weight: 600; }
   .summary-table td.has-both { background: linear-gradient(135deg, var(--color-accent-light) 50%, var(--color-forecast-light) 50%); font-weight: 600; }
   .summary-table td.total-cell { font-weight: 700; background: var(--color-bg); }
   .summary-table td.over-cell { color: var(--color-danger); font-weight: 700; background: var(--color-danger-bg); }
+
+  .summary-table tfoot td {
+    font-weight: 700;
+    background: var(--color-bg);
+    border-top: 2px solid var(--color-border);
+  }
+  .summary-table tfoot td:first-child {
+    background: var(--color-bg);
+  }
 
   .cell-actual { color: var(--color-accent); }
   .cell-forecast { color: var(--color-forecast); }
@@ -1196,15 +1265,20 @@
   <div class="login-card">
     <div class="login-logo">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1"/>
-        <rect x="14" y="3" width="7" height="7" rx="1"/>
-        <rect x="3" y="14" width="7" height="7" rx="1"/>
-        <rect x="14" y="14" width="7" height="7" rx="1"/>
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/>
+        <circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/>
+        <path d="M8 14c1 2 3 3 4 3s3-1 4-3"/>
       </svg>
     </div>
-    <h1 class="login-title">Paco's Tracker</h1>
+    <h1 class="login-title">Paco's Staffing Tracker</h1>
     <p class="login-subtitle">Select your name to get started</p>
     <div id="person-buttons" data-testid="person-buttons"></div>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--color-border-light);">
+      <button class="person-btn" id="login-admin-btn" data-testid="login-admin-btn" style="background:none;border:1px solid var(--color-text-muted);color:var(--color-text-secondary);font-size:13px;text-align:center;padding:10px 16px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Admin
+      </button>
+    </div>
   </div>
 </div>
 
@@ -1328,38 +1402,50 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
     <span class="admin-title">Admin</span>
+    <button class="download-week-btn" id="download-excel-btn" data-testid="download-excel-btn" style="margin-left:auto;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download Excel
+    </button>
   </div>
 
   <!-- Admin Tabs -->
   <div class="admin-tabs" data-testid="admin-tabs">
-    <button class="admin-tab-btn active" data-tab="all-entries" data-testid="tab-all-entries">All Entries</button>
-    <button class="admin-tab-btn" data-tab="insights" data-testid="tab-insights">Insights</button>
+    <button class="admin-tab-btn" data-tab="all-entries" data-testid="tab-all-entries">All Entries</button>
+    <button class="admin-tab-btn active" data-tab="insights" data-testid="tab-insights">Insights</button>
     <button class="admin-tab-btn" data-tab="setup" data-testid="tab-setup">Setup</button>
   </div>
 
   <div class="admin-content">
     <!-- Tab 1: All Entries -->
-    <div class="admin-tab-panel active" id="panel-all-entries" data-testid="panel-all-entries">
+    <div class="admin-tab-panel" id="panel-all-entries" data-testid="panel-all-entries">
       <div class="admin-section">
-        <div class="admin-section-title">Weekly Summary</div>
-        <div class="admin-week-row">
-          <span class="admin-week-label">Week:</span>
-          <select id="admin-week-select" class="week-select" data-testid="admin-week-select"></select>
-        </div>
-        <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:10px;">
-          Cells show <span class="cell-actual" style="font-weight:600">Actual</span> / <span class="cell-forecast" style="font-weight:600">Forecast</span>
+        <div class="summary-table-header">
+          <div>
+            <h3>Weekly Summary <span class="week-range" id="summary-week-range"></span></h3>
+            <div style="font-size:11px;color:var(--color-text-muted);margin-top:4px;">
+              Cells show <span class="cell-actual" style="font-weight:600">Actual</span> / <span class="cell-forecast" style="font-weight:600">Forecast</span>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <select id="admin-week-select" class="week-select" data-testid="admin-week-select"></select>
+            <button class="download-week-btn" id="download-week-btn" data-testid="download-week-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:-1px;margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download This Week
+            </button>
+          </div>
         </div>
         <div class="summary-table-wrap">
           <table class="summary-table" id="summary-table" data-testid="summary-table">
             <thead id="summary-thead"></thead>
             <tbody id="summary-tbody"></tbody>
+            <tfoot id="summary-tfoot"></tfoot>
           </table>
         </div>
       </div>
     </div>
 
     <!-- Tab 2: Insights -->
-    <div class="admin-tab-panel" id="panel-insights" data-testid="panel-insights">
+    <div class="admin-tab-panel active" id="panel-insights" data-testid="panel-insights">
       <!-- Filters -->
       <div class="insight-filters">
         <div class="insight-filter-group">
@@ -1463,6 +1549,18 @@
           <button class="admin-add-btn" id="add-project-btn" data-testid="add-project-btn">Add</button>
         </div>
       </div>
+
+      <!-- Import / Restore Data -->
+      <div class="admin-section">
+        <div class="admin-section-title">Import / Restore Data</div>
+        <p style="font-size:12px;color:var(--color-text-muted);margin:0 0 10px;">Upload an Excel file exported from this app to merge data back in. This will not delete existing data.</p>
+        <input type="file" id="import-excel-input" data-testid="import-excel-input" accept=".xlsx,.xls" style="font-size:13px;">
+        <div id="import-preview" data-testid="import-preview" style="margin-top:10px;display:none;">
+          <p id="import-summary" style="font-size:13px;margin:0 0 8px;"></p>
+          <button class="admin-add-btn" id="import-confirm-btn" data-testid="import-confirm-btn">Import</button>
+          <button class="modal-cancel" id="import-cancel-btn" data-testid="import-cancel-btn" style="margin-left:8px;">Cancel</button>
+        </div>
+      </div>
     </div>
   </div>
   <footer class="app-footer">
@@ -1512,7 +1610,7 @@
   let appData = null;
   let currentPerson = null;
   let currentWeek = null;
-  let activeAdminTab = 'all-entries';
+  let activeAdminTab = 'insights';
 
   // Chart instances (so we can destroy before re-creating)
   let chartInstances = {};
@@ -1551,6 +1649,7 @@
   const adminWeekSelect = $('admin-week-select');
   const summaryThead = $('summary-thead');
   const summaryTbody = $('summary-tbody');
+  const summaryTfoot = $('summary-tfoot');
   const toast = $('toast');
   const loading = $('loading');
 
@@ -2082,7 +2181,7 @@
     const weekSel = $('my-insight-week-select');
     const weeks = getAllWeeksSorted().reverse();
 
-    weekSel.innerHTML = '';
+    weekSel.innerHTML = '<option value="all">All Weeks</option>';
     weeks.forEach(w => {
       const opt = document.createElement('option');
       opt.value = w;
@@ -2096,17 +2195,26 @@
   }
 
   function renderMyInsightsCharts() {
-    const week = $('my-insight-week-select').value;
-    if (!week || !currentPerson) return;
+    const weekVal = $('my-insight-week-select').value;
+    if (!weekVal || !currentPerson) return;
 
     const projects = appData.projects || [];
+    const isAllWeeks = weekVal === 'all';
+    const allWeeks = getAllWeeksSorted();
 
     // My Utilization
-    const total = getPersonTotal(week, currentPerson);
+    let total;
+    if (isAllWeeks) {
+      const weekTotals = allWeeks.map(w => getPersonTotal(w, currentPerson)).filter(t => t > 0);
+      total = weekTotals.length > 0 ? Math.round(weekTotals.reduce((a, b) => a + b, 0) / weekTotals.length) : 0;
+    } else {
+      total = getPersonTotal(weekVal, currentPerson);
+    }
     const utilDiv = $('my-utilization-content');
     const st = total === 100 ? 'ok' : total > 100 ? 'over' : total === 0 ? 'empty' : 'under';
     const colors = { ok: '#0f7b6c', over: '#dc3545', under: '#f59e0b', empty: '#8b95a5' };
     const labels = { ok: 'Balanced', over: `Over ${total - 100}%`, under: `${100 - total}% unallocated`, empty: 'No data' };
+    const avgLabel = isAllWeeks ? ' (avg)' : '';
     utilDiv.innerHTML = `
       <div class="util-row" style="border-left: 3px solid ${colors[st]}">
         <span class="util-name">${currentPerson}</span>
@@ -2114,18 +2222,22 @@
           <div class="util-bar-track">
             <div class="util-bar-fill" style="width:${Math.min(total, 100)}%;background:${colors[st]}"></div>
           </div>
-          <span class="util-pct" style="color:${colors[st]}">${total}%</span>
+          <span class="util-pct" style="color:${colors[st]}">${total}%${avgLabel}</span>
           <span class="util-status" style="color:${colors[st]}">${labels[st]}</span>
         </div>
       </div>
     `;
 
     // My Time Split (Pie/Doughnut)
-    const pieData = projects.map((pr, i) => ({
-      name: pr,
-      value: getEntry(week, currentPerson, pr),
-      color: CHART_COLORS[i % CHART_COLORS.length]
-    })).filter(d => d.value > 0);
+    const pieData = projects.map((pr, i) => {
+      let value;
+      if (isAllWeeks) {
+        value = allWeeks.reduce((sum, w) => sum + getEntry(w, currentPerson, pr), 0);
+      } else {
+        value = getEntry(weekVal, currentPerson, pr);
+      }
+      return { name: pr, value, color: CHART_COLORS[i % CHART_COLORS.length] };
+    }).filter(d => d.value > 0);
 
     if (pieData.length > 0) {
       createChart('my-pie-chart', {
@@ -2159,7 +2271,6 @@
     }
 
     // My Trend (Line)
-    const allWeeks = getAllWeeksSorted();
     const trendDatasets = projects.map((pr, i) => {
       const data = allWeeks.map(w => getEntry(w, currentPerson, pr));
       const hasData = data.some(v => v > 0);
@@ -2278,6 +2389,14 @@
     setTimeout(() => adminCodeInput.focus(), 100);
   });
 
+  // Login screen admin button
+  $('login-admin-btn').addEventListener('click', () => {
+    adminModal.classList.add('active');
+    adminCodeInput.value = '';
+    adminError.style.display = 'none';
+    setTimeout(() => adminCodeInput.focus(), 100);
+  });
+
   adminCancelBtn.addEventListener('click', () => {
     adminModal.classList.remove('active');
   });
@@ -2333,9 +2452,7 @@
     renderAdminWeekSelect();
     renderSummaryTable();
     renderAdminInsightFilters();
-    if (activeAdminTab === 'insights') {
-      renderAdminInsights();
-    }
+    renderAdminInsights();
   }
 
   function renderAdminPeople() {
@@ -2468,20 +2585,30 @@
     const people = appData.people || [];
     const projects = appData.projects || [];
 
+    // Update week range display
+    $('summary-week-range').textContent = `— ${getWeekDateRange(week)}`;
+
+    // Header row with rotated project names
     summaryThead.innerHTML = '';
     const headerRow = document.createElement('tr');
-    headerRow.innerHTML = '<th></th>';
+    headerRow.innerHTML = '<th>Person</th>';
     projects.forEach(p => {
       const th = document.createElement('th');
-      th.textContent = p;
+      th.innerHTML = `<span class="rotated-header">${p}</span>`;
       headerRow.appendChild(th);
     });
     const totalTh = document.createElement('th');
-    totalTh.textContent = 'Total';
+    totalTh.innerHTML = '<span class="rotated-header">Total</span>';
     headerRow.appendChild(totalTh);
     summaryThead.appendChild(headerRow);
 
+    // Body rows
     summaryTbody.innerHTML = '';
+    const colActualTotals = projects.map(() => 0);
+    const colForecastTotals = projects.map(() => 0);
+    let grandActualTotal = 0;
+    let grandForecastTotal = 0;
+
     people.forEach(person => {
       const tr = document.createElement('tr');
       const nameTd = document.createElement('td');
@@ -2490,12 +2617,14 @@
 
       let rowActualTotal = 0;
       let rowForecastTotal = 0;
-      projects.forEach(proj => {
+      projects.forEach((proj, idx) => {
         const key = `${week}|${person}|${proj}`;
         const actual = (appData.entries || {})[key] || 0;
         const forecast = (appData.forecasts || {})[key] || 0;
         rowActualTotal += actual;
         rowForecastTotal += forecast;
+        colActualTotals[idx] += actual;
+        colForecastTotals[idx] += forecast;
         const td = document.createElement('td');
         if (actual > 0 || forecast > 0) {
           const aSpan = actual > 0 ? `<span class="cell-actual">${actual}</span>` : '<span style="color:var(--color-text-muted)">–</span>';
@@ -2508,6 +2637,9 @@
         tr.appendChild(td);
       });
 
+      grandActualTotal += rowActualTotal;
+      grandForecastTotal += rowForecastTotal;
+
       const totalTd = document.createElement('td');
       const aTotal = `<span class="cell-actual">${rowActualTotal}%</span>`;
       const fTotal = `<span class="cell-forecast">${rowForecastTotal}%</span>`;
@@ -2516,7 +2648,218 @@
       tr.appendChild(totalTd);
       summaryTbody.appendChild(tr);
     });
+
+    // Totals row in tfoot
+    summaryTfoot.innerHTML = '';
+    const footRow = document.createElement('tr');
+    const footLabel = document.createElement('td');
+    footLabel.textContent = 'Total';
+    footRow.appendChild(footLabel);
+    projects.forEach((_, idx) => {
+      const td = document.createElement('td');
+      if (colActualTotals[idx] > 0 || colForecastTotals[idx] > 0) {
+        td.innerHTML = `<span class="cell-actual">${colActualTotals[idx]}</span>/<span class="cell-forecast">${colForecastTotals[idx]}</span>`;
+      }
+      footRow.appendChild(td);
+    });
+    const grandTd = document.createElement('td');
+    grandTd.innerHTML = `<span class="cell-actual">${grandActualTotal}%</span>/<span class="cell-forecast">${grandForecastTotal}%</span>`;
+    footRow.appendChild(grandTd);
+    summaryTfoot.appendChild(footRow);
   }
+
+  // Download This Week as CSV
+  $('download-week-btn').addEventListener('click', () => {
+    const week = adminWeekSelect.value;
+    if (!week) return;
+    const people = appData.people || [];
+    const projects = appData.projects || [];
+    let csv = 'Person,' + projects.map(p => `"${p}"`).join(',') + ',Total Actual,Total Forecast\n';
+    people.forEach(person => {
+      let rowA = 0, rowF = 0;
+      const cells = projects.map(proj => {
+        const key = `${week}|${person}|${proj}`;
+        const a = (appData.entries || {})[key] || 0;
+        const f = (appData.forecasts || {})[key] || 0;
+        rowA += a;
+        rowF += f;
+        return `${a}/${f}`;
+      });
+      csv += `"${person}",${cells.join(',')},${rowA}%,${rowF}%\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `staffing-week-${week}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast('Downloaded week ' + week);
+  });
+
+  // ─── Download Excel (SheetJS) ───
+  $('download-excel-btn').addEventListener('click', () => {
+    if (typeof XLSX === 'undefined') { showToast('SheetJS not loaded'); return; }
+
+    const people = appData.people || [];
+    const projects = appData.projects || [];
+    const allWeeks = [...new Set([...(appData.weeks || []), getCurrentWeek()])].sort();
+    const mostRecentWeek = allWeeks[allWeeks.length - 1];
+
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Weekly Summary (most recent week matrix)
+    const ws1Data = [['Paco\'s Staffing Tracker — Weekly Summary'], [`Week: ${mostRecentWeek} (${getWeekDateRange(mostRecentWeek)})`], []];
+    ws1Data.push(['Person', ...projects, 'Total']);
+    people.forEach(person => {
+      let total = 0;
+      const row = [person];
+      projects.forEach(proj => {
+        const val = (appData.entries || {})[`${mostRecentWeek}|${person}|${proj}`] || 0;
+        total += val;
+        row.push(val || '');
+      });
+      row.push(total + '%');
+      ws1Data.push(row);
+    });
+    const ws1 = XLSX.utils.aoa_to_sheet(ws1Data);
+    // Auto-width columns
+    ws1['!cols'] = ws1Data[3].map((_, i) => ({ wch: Math.max(12, ...(ws1Data.map(r => String(r[i] || '').length))) }));
+    XLSX.utils.book_append_sheet(wb, ws1, 'Weekly Summary');
+
+    // Sheet 2: All Entries (flat table with all data)
+    const ws2Data = [['Week', 'Person', 'Project', 'Actual%', 'Forecast%']];
+    allWeeks.forEach(week => {
+      people.forEach(person => {
+        projects.forEach(proj => {
+          const key = `${week}|${person}|${proj}`;
+          const actual = (appData.entries || {})[key] || 0;
+          const forecast = (appData.forecasts || {})[key] || 0;
+          if (actual > 0 || forecast > 0) {
+            ws2Data.push([week, person, proj, actual, forecast]);
+          }
+        });
+      });
+    });
+    const ws2 = XLSX.utils.aoa_to_sheet(ws2Data);
+    ws2['!cols'] = [{ wch: 12 }, { wch: 18 }, { wch: 20 }, { wch: 10 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws2, 'All Entries');
+
+    // Sheet 3: Forecasts only
+    const ws3Data = [['Week', 'Person', 'Project', 'Forecast%']];
+    allWeeks.forEach(week => {
+      people.forEach(person => {
+        projects.forEach(proj => {
+          const key = `${week}|${person}|${proj}`;
+          const forecast = (appData.forecasts || {})[key] || 0;
+          if (forecast > 0) {
+            ws3Data.push([week, person, proj, forecast]);
+          }
+        });
+      });
+    });
+    const ws3 = XLSX.utils.aoa_to_sheet(ws3Data);
+    ws3['!cols'] = [{ wch: 12 }, { wch: 18 }, { wch: 20 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws3, 'Forecasts');
+
+    // Style header rows with bold (SheetJS cell styles)
+    [ws1, ws2, ws3].forEach(ws => {
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const headerCell = ws[XLSX.utils.encode_cell({ r: ws === ws1 ? 3 : 0, c })];
+        if (headerCell) headerCell.s = { font: { bold: true }, fill: { fgColor: { rgb: 'E0F2F1' } } };
+      }
+    });
+
+    const today = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `pacos-staffing-tracker-export-${today}.xlsx`);
+    showToast('Excel file downloaded');
+  });
+
+  // ─── Import Excel ───
+  let pendingImportData = null;
+  const importInput = $('import-excel-input');
+  const importPreview = $('import-preview');
+  const importSummary = $('import-summary');
+
+  importInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (typeof XLSX === 'undefined') { showToast('SheetJS not loaded'); return; }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: 'array' });
+        const sheetName = wb.SheetNames.find(n => n === 'All Entries') || wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(ws);
+
+        // Expect columns: Week, Person, Project, Actual%, Forecast%
+        const parsed = [];
+        const weekSet = new Set();
+        rows.forEach(row => {
+          const week = row['Week'] || '';
+          const person = row['Person'] || '';
+          const project = row['Project'] || '';
+          const actual = parseInt(row['Actual%']) || 0;
+          const forecast = parseInt(row['Forecast%']) || 0;
+          if (week && person && project && (actual > 0 || forecast > 0)) {
+            parsed.push({ week, person, project, actual, forecast });
+            weekSet.add(week);
+          }
+        });
+
+        if (parsed.length === 0) {
+          showToast('No valid entries found in file');
+          importInput.value = '';
+          return;
+        }
+
+        pendingImportData = parsed;
+        importSummary.textContent = `Found ${parsed.length} entries across ${weekSet.size} week(s). This will MERGE with existing data (won't delete). Import?`;
+        importPreview.style.display = 'block';
+      } catch (err) {
+        showToast('Error reading file: ' + err.message);
+        importInput.value = '';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  $('import-confirm-btn').addEventListener('click', async () => {
+    if (!pendingImportData) return;
+
+    pendingImportData.forEach(({ week, person, project, actual, forecast }) => {
+      // Add new people/projects/weeks if not present
+      if (!appData.people.includes(person)) appData.people.push(person);
+      if (!appData.projects.includes(project)) appData.projects.push(project);
+      if (!appData.weeks) appData.weeks = [];
+      if (!appData.weeks.includes(week)) appData.weeks.push(week);
+
+      const key = `${week}|${person}|${project}`;
+      if (!appData.entries) appData.entries = {};
+      if (!appData.forecasts) appData.forecasts = {};
+      if (actual > 0) appData.entries[key] = actual;
+      if (forecast > 0) appData.forecasts[key] = forecast;
+    });
+
+    try {
+      await saveFullData(appData);
+      showToast(`Imported ${pendingImportData.length} entries successfully`);
+      pendingImportData = null;
+      importPreview.style.display = 'none';
+      importInput.value = '';
+      renderAdmin();
+    } catch (err) {
+      showToast('Save failed: ' + err.message);
+    }
+  });
+
+  $('import-cancel-btn').addEventListener('click', () => {
+    pendingImportData = null;
+    importPreview.style.display = 'none';
+    importInput.value = '';
+  });
 
   // ─── Admin Insight Filters ───
   function renderAdminInsightFilters() {
@@ -2525,12 +2868,11 @@
     const projectSel = $('admin-insight-project');
 
     const weeks = getAllWeeksSorted().reverse();
-    weekSel.innerHTML = '';
+    weekSel.innerHTML = '<option value="all">All Weeks</option>';
     weeks.forEach(w => {
       const opt = document.createElement('option');
       opt.value = w;
       opt.textContent = `${w}  (${getWeekDateRange(w)})`;
-      if (w === getCurrentWeek()) opt.selected = true;
       weekSel.appendChild(opt);
     });
 
@@ -2581,12 +2923,21 @@
   function renderAdminUtilization(week, people) {
     const container = $('admin-utilization-content');
     container.innerHTML = '';
+    const isAllWeeks = week === 'all';
+    const allW = isAllWeeks ? getAllWeeksSorted() : null;
 
     people.forEach(person => {
-      const total = getPersonTotal(week, person);
+      let total;
+      if (isAllWeeks) {
+        const weekTotals = allW.map(w => getPersonTotal(w, person)).filter(t => t > 0);
+        total = weekTotals.length > 0 ? Math.round(weekTotals.reduce((a, b) => a + b, 0) / weekTotals.length) : 0;
+      } else {
+        total = getPersonTotal(week, person);
+      }
       const st = total === 100 ? 'ok' : total > 100 ? 'over' : total === 0 ? 'empty' : 'under';
       const colors = { ok: '#0f7b6c', over: '#dc3545', under: '#f59e0b', empty: '#8b95a5' };
       const labels = { ok: 'Balanced', over: `Over ${total - 100}%`, under: `${100 - total}% unalloc`, empty: 'No data' };
+      const avgLabel = isAllWeeks ? ' (avg)' : '';
 
       const row = document.createElement('div');
       row.className = 'util-row';
@@ -2597,7 +2948,7 @@
           <div class="util-bar-track">
             <div class="util-bar-fill" style="width:${Math.min(total, 100)}%;background:${colors[st]}"></div>
           </div>
-          <span class="util-pct" style="color:${colors[st]}">${total}%</span>
+          <span class="util-pct" style="color:${colors[st]}">${total}%${avgLabel}</span>
           <span class="util-status" style="color:${colors[st]}">${labels[st]}</span>
         </div>
       `;
@@ -2611,7 +2962,8 @@
 
   function renderAdminNotLogged(week, allPeople) {
     const container = $('admin-not-logged-content');
-    const notLogged = allPeople.filter(person => getPersonTotal(week, person) === 0);
+    const effectiveWeek = week === 'all' ? getCurrentWeek() : week;
+    const notLogged = allPeople.filter(person => getPersonTotal(effectiveWeek, person) === 0);
 
     container.innerHTML = '';
     if (notLogged.length === 0) {
@@ -2630,10 +2982,17 @@
   }
 
   function renderAdminBreakdown(week, filteredPeople, filteredProjects) {
+    const isAllWeeks = week === 'all';
+    const allW = isAllWeeks ? getAllWeeksSorted() : null;
     const barData = filteredPeople.map(person => {
       const row = { name: person };
       filteredProjects.forEach(pr => {
-        row[pr] = getEntry(week, person, pr);
+        if (isAllWeeks) {
+          const vals = allW.map(w => getEntry(w, person, pr)).filter(v => v > 0);
+          row[pr] = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / allW.length) : 0;
+        } else {
+          row[pr] = getEntry(week, person, pr);
+        }
       });
       return row;
     });
@@ -2684,10 +3043,16 @@
   }
 
   function renderAdminPieChart(week, filteredPeople, filteredProjects) {
+    const isAllWeeks = week === 'all';
+    const allW = isAllWeeks ? getAllWeeksSorted() : null;
     const pieData = filteredProjects.map((pr, i) => {
       let total = 0;
       filteredPeople.forEach(person => {
-        total += getEntry(week, person, pr);
+        if (isAllWeeks) {
+          allW.forEach(w => { total += getEntry(w, person, pr); });
+        } else {
+          total += getEntry(week, person, pr);
+        }
       });
       return { name: pr, value: total, color: CHART_COLORS[i % CHART_COLORS.length] };
     }).filter(d => d.value > 0);
