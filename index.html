@@ -30,20 +30,20 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --color-bg: #f8f9fa;
+    --color-bg: #f0f2f5;
     --color-surface: #ffffff;
-    --color-border: #e2e5e9;
-    --color-border-light: #eef0f2;
-    --color-text: #1a1d21;
-    --color-text-secondary: #5f6b7a;
-    --color-text-muted: #8b95a5;
-    --color-accent: #0f7b6c;
-    --color-accent-hover: #0a5f53;
-    --color-accent-light: #e6f5f2;
-    --color-danger: #dc3545;
-    --color-danger-bg: #fff0f0;
-    --color-success: #0f7b6c;
-    --color-success-bg: #e6f5f2;
+    --color-border: #d1d5db;
+    --color-border-light: #e5e7eb;
+    --color-text: #111827;
+    --color-text-secondary: #4b5563;
+    --color-text-muted: #9ca3af;
+    --color-accent: #1e3a5f;
+    --color-accent-hover: #152c4a;
+    --color-accent-light: #e8edf3;
+    --color-danger: #dc2626;
+    --color-danger-bg: #fef2f2;
+    --color-success: #059669;
+    --color-success-bg: #ecfdf5;
     --color-forecast: #6366f1;
     --color-forecast-light: #eef2ff;
     --radius: 10px;
@@ -1308,6 +1308,10 @@
     </a>
   </div>
 
+  <div class="save-area">
+    <button class="save-btn" id="save-btn-top" data-testid="save-btn-top">Save</button>
+  </div>
+
   <!-- Section 1: This Week — Actuals -->
   <div class="section-divider" id="actuals-section-header">
     <div class="section-divider-title">This Week — Actuals</div>
@@ -1581,6 +1585,18 @@
   </div>
 </div>
 
+<!-- ─── Save Warning Modal ─── -->
+<div id="save-warning-modal" class="modal-overlay" data-testid="save-warning-modal">
+  <div class="modal-card">
+    <div class="modal-title" style="font-size:16px;">Heads up</div>
+    <p id="save-warning-msg" style="margin:8px 0 16px;font-size:14px;color:var(--color-text-secondary);line-height:1.5;"></p>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="save-warning-cancel">Go Back</button>
+      <button class="modal-submit" id="save-warning-confirm">Save Anyway</button>
+    </div>
+  </div>
+</div>
+
 <!-- ─── Toast ─── -->
 <div id="toast" class="toast" data-testid="toast"></div>
 
@@ -1604,7 +1620,7 @@
     'DGO', 'CW', '3-Pack', 'ALTs', 'Ai', 'QOZ', 'Other - TRP', 'Other - TCP'
   ];
 
-  const CHART_COLORS = ["#3b82f6","#ef4444","#10b981","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#84cc16","#f97316","#6366f1"];
+  const CHART_COLORS = ["#1e3a5f","#dc2626","#059669","#d97706","#7c3aed","#db2777","#0891b2","#65a30d","#ea580c","#4f46e5"];
 
   // ─── State ───
   let appData = null;
@@ -1631,6 +1647,11 @@
   const actualsWeekLabel = $('actuals-week-label');
   const forecastWeekLabel = $('forecast-week-label');
   const saveBtn = $('save-btn');
+  const saveBtnTop = $('save-btn-top');
+  const saveWarningModal = $('save-warning-modal');
+  const saveWarningMsg = $('save-warning-msg');
+  const saveWarningCancel = $('save-warning-cancel');
+  const saveWarningConfirm = $('save-warning-confirm');
   const backBtn = $('back-btn');
   const adminLink = $('admin-link');
   const myInsightsLink = $('my-insights-link');
@@ -2072,14 +2093,20 @@
   }
 
   // ─── Save (with forecasts) ───
-  saveBtn.addEventListener('click', async () => {
-    saveBtn.disabled = true;
-    saveBtn.textContent = 'Saving...';
+  function setSaveBtnsState(text, cls, disabled) {
+    [saveBtn, saveBtnTop].forEach(btn => {
+      btn.textContent = text;
+      if (cls) btn.classList.add(cls); else btn.classList.remove('saved');
+      btn.disabled = disabled;
+    });
+  }
+
+  async function performSave() {
+    setSaveBtnsState('Saving...', null, true);
     showLoading(true);
 
     try {
       const freshData = await fetchData();
-      // Ensure forecasts exists
       if (!freshData.forecasts) freshData.forecasts = {};
 
       const existingSet = new Set(freshData.projects || []);
@@ -2098,7 +2125,6 @@
         freshData.weeks.sort();
       }
 
-      // Merge actuals (saved to currentWeek)
       const actualInputs = projectList.querySelectorAll('.actual-input');
       actualInputs.forEach((inp) => {
         const proj = inp.getAttribute('data-project');
@@ -2111,7 +2137,6 @@
         }
       });
 
-      // Merge forecasts (saved to NEXT week)
       const nextWeek = getNextWeek(currentWeek);
       if (!freshData.weeks.includes(nextWeek)) {
         freshData.weeks.push(nextWeek);
@@ -2132,23 +2157,45 @@
       await saveFullData(freshData);
       appData = freshData;
 
-      saveBtn.textContent = 'Saved ✓';
-      saveBtn.classList.add('saved');
+      setSaveBtnsState('Saved ✓', 'saved', true);
       showToast('Hours saved successfully');
 
       setTimeout(() => {
-        saveBtn.textContent = 'Save';
-        saveBtn.classList.remove('saved');
-        saveBtn.disabled = false;
+        setSaveBtnsState('Save', null, false);
       }, 2000);
     } catch (e) {
       console.error('Save failed:', e);
       showToast('Failed to save. Please try again.');
-      saveBtn.textContent = 'Save';
-      saveBtn.disabled = false;
+      setSaveBtnsState('Save', null, false);
     } finally {
       showLoading(false);
     }
+  }
+
+  function handleSaveClick() {
+    const actualTotal = parseInt(totalActual.textContent) || 0;
+    const forecastTotal = parseInt(totalForecast.textContent) || 0;
+    const zeroActuals = actualTotal === 0;
+    const zeroForecast = forecastTotal === 0;
+
+    if (zeroActuals || zeroForecast) {
+      const which = zeroActuals && zeroForecast ? 'actuals and forecast' : zeroActuals ? 'actuals' : 'forecast';
+      saveWarningMsg.textContent = `Your ${which} total is 0%. Are you sure you want to save?`;
+      saveWarningModal.classList.add('active');
+    } else {
+      performSave();
+    }
+  }
+
+  saveBtn.addEventListener('click', handleSaveClick);
+  saveBtnTop.addEventListener('click', handleSaveClick);
+
+  saveWarningCancel.addEventListener('click', () => {
+    saveWarningModal.classList.remove('active');
+  });
+  saveWarningConfirm.addEventListener('click', () => {
+    saveWarningModal.classList.remove('active');
+    performSave();
   });
 
   // ─── Back Button ───
@@ -2212,7 +2259,7 @@
     }
     const utilDiv = $('my-utilization-content');
     const st = total === 100 ? 'ok' : total > 100 ? 'over' : total === 0 ? 'empty' : 'under';
-    const colors = { ok: '#0f7b6c', over: '#dc3545', under: '#f59e0b', empty: '#8b95a5' };
+    const colors = { ok: '#059669', over: '#dc2626', under: '#d97706', empty: '#9ca3af' };
     const labels = { ok: 'Balanced', over: `Over ${total - 100}%`, under: `${100 - total}% unallocated`, empty: 'No data' };
     const avgLabel = isAllWeeks ? ' (avg)' : '';
     utilDiv.innerHTML = `
@@ -2299,7 +2346,7 @@
           maintainAspectRatio: true,
           aspectRatio: 2,
           scales: {
-            y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
+            y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#e5e7eb' } },
             x: { ticks: { font: { size: 10 } }, grid: { display: false } }
           },
           plugins: {
@@ -2364,7 +2411,7 @@
           maintainAspectRatio: true,
           aspectRatio: 2,
           scales: {
-            y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
+            y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#e5e7eb' } },
             x: { ticks: { font: { size: 10 } }, grid: { display: false } }
           },
           plugins: {
@@ -2766,7 +2813,7 @@
       const range = XLSX.utils.decode_range(ws['!ref']);
       for (let c = range.s.c; c <= range.e.c; c++) {
         const headerCell = ws[XLSX.utils.encode_cell({ r: ws === ws1 ? 3 : 0, c })];
-        if (headerCell) headerCell.s = { font: { bold: true }, fill: { fgColor: { rgb: 'E0F2F1' } } };
+        if (headerCell) headerCell.s = { font: { bold: true }, fill: { fgColor: { rgb: 'E8EDF3' } } };
       }
     });
 
@@ -2935,7 +2982,7 @@
         total = getPersonTotal(week, person);
       }
       const st = total === 100 ? 'ok' : total > 100 ? 'over' : total === 0 ? 'empty' : 'under';
-      const colors = { ok: '#0f7b6c', over: '#dc3545', under: '#f59e0b', empty: '#8b95a5' };
+      const colors = { ok: '#059669', over: '#dc2626', under: '#d97706', empty: '#9ca3af' };
       const labels = { ok: 'Balanced', over: `Over ${total - 100}%`, under: `${100 - total}% unalloc`, empty: 'No data' };
       const avgLabel = isAllWeeks ? ' (avg)' : '';
 
@@ -3024,7 +3071,7 @@
             stacked: true,
             max: 120,
             ticks: { callback: v => v + '%', font: { size: 10 } },
-            grid: { color: '#eef0f2' }
+            grid: { color: '#e5e7eb' }
           },
           y: {
             stacked: true,
@@ -3139,7 +3186,7 @@
         maintainAspectRatio: true,
         aspectRatio: 2,
         scales: {
-          y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
+          y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#e5e7eb' } },
           x: { ticks: { font: { size: 10 } }, grid: { display: false } }
         },
         plugins: {
@@ -3227,7 +3274,7 @@
         maintainAspectRatio: true,
         aspectRatio: 2,
         scales: {
-          y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
+          y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#e5e7eb' } },
           x: { ticks: { font: { size: 10 } }, grid: { display: false } }
         },
         plugins: {
@@ -3293,7 +3340,7 @@
         scales: {
           y: {
             ticks: { callback: v => (v > 0 ? '+' : '') + v + '%', font: { size: 11 } },
-            grid: { color: (ctx) => ctx.tick.value === 0 ? '#1a1d21' : '#eef0f2' }
+            grid: { color: (ctx) => ctx.tick.value === 0 ? '#111827' : '#e5e7eb' }
           },
           x: { ticks: { font: { size: 10 } }, grid: { display: false } }
         },
@@ -3354,8 +3401,8 @@
     }
 
     accuracyData.forEach(d => {
-      const color = d.accuracy >= 70 ? '#0f7b6c' : d.accuracy >= 40 ? '#f59e0b' : '#dc3545';
-      const bgColor = d.accuracy >= 70 ? '#e6f5f2' : d.accuracy >= 40 ? '#fef9e7' : '#fff0f0';
+      const color = d.accuracy >= 70 ? '#059669' : d.accuracy >= 40 ? '#d97706' : '#dc2626';
+      const bgColor = d.accuracy >= 70 ? '#ecfdf5' : d.accuracy >= 40 ? '#fef9e7' : '#fef2f2';
 
       const card = document.createElement('div');
       card.className = 'accuracy-card';
@@ -3370,10 +3417,10 @@
             <div class="accuracy-bar-fill" style="width:${d.accuracy}%;background:${color}"></div>
           </div>
           <div class="accuracy-stats">
-            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#8b95a5"></span>Avg err: ${d.avgErr}%</span>
-            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#0f7b6c"></span>On target: ${d.accurateCount}</span>
-            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#f59e0b"></span>Over: ${d.overCount}</span>
-            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#dc3545"></span>Under: ${d.underCount}</span>
+            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#9ca3af"></span>Avg err: ${d.avgErr}%</span>
+            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#059669"></span>On target: ${d.accurateCount}</span>
+            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#d97706"></span>Over: ${d.overCount}</span>
+            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#dc2626"></span>Under: ${d.underCount}</span>
           </div>
         </div>
       `;
