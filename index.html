@@ -1524,6 +1524,15 @@
         </div>
       </div>
 
+      <!-- Project Staffing -->
+      <div class="insight-card" style="margin-top:16px" data-testid="admin-project-staffing-card">
+        <div class="insight-card-title">Project Staffing</div>
+        <div class="insight-card-subtitle">Who's putting time into each project</div>
+        <div class="chart-container">
+          <canvas id="admin-project-staffing-chart" data-testid="admin-project-staffing-chart"></canvas>
+        </div>
+      </div>
+
       <!-- Trend -->
       <div class="insight-card" style="margin-top:16px" data-testid="admin-trend-card">
         <div class="insight-card-title">Project Trend Over Time</div>
@@ -3130,6 +3139,7 @@
     renderAdminNotLogged(selectedWeek, people);
     renderAdminBreakdown(selectedWeek, filteredPeople, filteredProjects);
     renderAdminPieChart(selectedWeek, filteredPeople, filteredProjects);
+    renderAdminProjectStaffing(selectedWeek, filteredPeople, filteredProjects);
     renderAdminTrend(filteredPeople, filteredProjects);
     renderAdminAvfTrend(filteredPeople, filteredProjects);
     renderAdminDivergence(filteredPeople, filteredProjects);
@@ -3197,24 +3207,28 @@
     }
   }
 
+  function shortName(fullName, allNames) {
+    const first = fullName.split(' ')[0];
+    const dupes = allNames.filter(n => n.split(' ')[0] === first).length;
+    if (dupes > 1 && fullName.split(' ').length > 1) {
+      return first + ' ' + fullName.split(' ')[1][0] + '.';
+    }
+    return first;
+  }
+
   function renderAdminBreakdown(week, filteredPeople, filteredProjects) {
     const isAllWeeks = week === 'all';
     const allW = isAllWeeks ? getAllWeeksSorted() : null;
     const barData = filteredPeople.map(person => {
       const row = { name: person };
-      let total = 0;
       filteredProjects.forEach(pr => {
-        let val;
         if (isAllWeeks) {
           const vals = allW.map(w => getEntry(w, person, pr)).filter(v => v > 0);
-          val = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / allW.length) : 0;
+          row[pr] = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / allW.length) : 0;
         } else {
-          val = getEntry(week, person, pr);
+          row[pr] = getEntry(week, person, pr);
         }
-        row[pr] = val;
-        total += val;
       });
-      row._total = total;
       return row;
     });
 
@@ -3223,21 +3237,11 @@
       return;
     }
 
-    // Only include projects that have at least some allocation
     const activeProjects = filteredProjects.filter(pr =>
       barData.some(d => (d[pr] || 0) > 0)
     );
-
-    // Use first names as labels, add last initial if duplicate first names
-    const firstNames = barData.map(d => d.name.split(' ')[0]);
-    const labels = barData.map((d, i) => {
-      const first = d.name.split(' ')[0];
-      const dupes = firstNames.filter(f => f === first).length;
-      if (dupes > 1 && d.name.split(' ').length > 1) {
-        return first + ' ' + d.name.split(' ')[1][0] + '.';
-      }
-      return first;
-    });
+    const allNames = filteredPeople;
+    const labels = barData.map(d => shortName(d.name, allNames));
 
     createChart('admin-breakdown-chart', {
       type: 'bar',
@@ -3245,11 +3249,7 @@
         labels: labels,
         datasets: activeProjects.map((pr, i) => ({
           label: pr,
-          data: barData.map(d => {
-            const total = d._total;
-            if (total === 0) return 0;
-            return Math.round((d[pr] || 0) / total * 100);
-          }),
+          data: barData.map(d => d[pr] || 0),
           backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
           borderWidth: 0,
           borderRadius: 0
@@ -3267,21 +3267,15 @@
           },
           y: {
             stacked: true,
-            max: 100,
             ticks: { callback: v => v + '%', font: { size: 10 } },
-            grid: { color: '#e5e7eb' }
+            grid: { color: '#e5e7eb' },
+            suggestedMax: 100
           }
         },
         plugins: {
           legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
           tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                const person = barData[ctx.dataIndex];
-                const rawVal = person[activeProjects[ctx.datasetIndex]] || 0;
-                return `${ctx.dataset.label}: ${ctx.raw}% (${rawVal}% actual)`;
-              }
-            }
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
           }
         }
       }
@@ -3333,6 +3327,76 @@
                 return `${ctx.label}: ${ctx.raw}% total (${pct}% of team)`;
               }
             }
+          }
+        }
+      }
+    });
+  }
+
+  function renderAdminProjectStaffing(week, filteredPeople, filteredProjects) {
+    const isAllWeeks = week === 'all';
+    const allW = isAllWeeks ? getAllWeeksSorted() : null;
+
+    // Build data: for each project, how much each person contributes
+    const projectData = filteredProjects.map(pr => {
+      const row = { name: pr };
+      filteredPeople.forEach(person => {
+        if (isAllWeeks) {
+          const vals = allW.map(w => getEntry(w, person, pr)).filter(v => v > 0);
+          row[person] = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / allW.length) : 0;
+        } else {
+          row[person] = getEntry(week, person, pr);
+        }
+      });
+      return row;
+    });
+
+    // Only show projects that have at least one person with time > 0
+    const activeData = projectData.filter(d =>
+      filteredPeople.some(person => (d[person] || 0) > 0)
+    );
+
+    if (activeData.length === 0 || filteredPeople.length === 0) {
+      destroyChart('admin-project-staffing-chart');
+      return;
+    }
+
+    const allNames = filteredPeople;
+    // Person colors stay consistent
+    const personColors = filteredPeople.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+
+    createChart('admin-project-staffing-chart', {
+      type: 'bar',
+      data: {
+        labels: activeData.map(d => d.name),
+        datasets: filteredPeople.map((person, i) => ({
+          label: shortName(person, allNames),
+          data: activeData.map(d => d[person] || 0),
+          backgroundColor: personColors[i],
+          borderWidth: 0,
+          borderRadius: 0
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.8,
+        scales: {
+          x: {
+            stacked: true,
+            ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 0 },
+            grid: { display: false }
+          },
+          y: {
+            stacked: true,
+            ticks: { callback: v => v + '%', font: { size: 10 } },
+            grid: { color: '#e5e7eb' }
+          }
+        },
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
           }
         }
       }
