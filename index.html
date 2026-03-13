@@ -428,6 +428,44 @@
     border-left: 1px solid var(--color-border);
   }
 
+  /* ─── Header Nav Buttons ─── */
+  .header-nav {
+    display: flex;
+    gap: 8px;
+    padding: 10px 20px 0;
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .header-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all var(--transition);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+  }
+
+  .header-nav-btn:hover {
+    background: var(--color-accent-light);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .header-nav-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
   /* ─── Admin Screen ─── */
   .admin-screen {
     display: none;
@@ -943,15 +981,67 @@
     border-radius: var(--radius-sm);
   }
 
+  /* ─── Section Divider ─── */
+  .section-divider {
+    padding: 12px 20px 4px;
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .section-divider-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary);
+  }
+
+  .section-divider-title.forecast-title {
+    color: var(--color-forecast);
+  }
+
+  .section-divider-sub {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
+  }
+
+  .forecast-ref {
+    font-size: 11px;
+    color: var(--color-forecast);
+    font-weight: 500;
+    white-space: nowrap;
+    margin-left: 4px;
+  }
+
+  .forecast-section-banner {
+    background: var(--color-surface);
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--color-border-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .forecast-section-total {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--color-text-muted);
+    transition: color var(--transition);
+  }
+
+  .forecast-section-total.forecast-over { color: var(--color-danger); }
+  .forecast-section-total.forecast-perfect { color: var(--color-forecast); }
+
   /* ─── Chart containers ─── */
   .chart-container {
     position: relative;
     width: 100%;
-    max-height: 320px;
-  }
-
-  .chart-container canvas {
-    width: 100% !important;
   }
 
   /* ─── Insights Grid ─── */
@@ -1132,18 +1222,47 @@
     </div>
   </header>
 
+  <!-- Header nav buttons for Insights / Admin -->
+  <div class="header-nav">
+    <a href="#" class="header-nav-btn" id="my-insights-link" data-testid="my-insights-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+      My Insights
+    </a>
+    <a href="#" class="header-nav-btn" id="admin-link" data-testid="admin-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      Admin
+    </a>
+  </div>
+
+  <!-- Section 1: This Week — Actuals -->
+  <div class="section-divider" id="actuals-section-header">
+    <div class="section-divider-title">This Week — Actuals</div>
+    <div class="section-divider-sub" id="actuals-week-label"></div>
+  </div>
+
   <div class="total-banner" data-testid="total-banner">
     <div class="total-group">
-      <span class="total-label">Actual</span>
+      <span class="total-label">Actual Total</span>
       <span class="total-value" id="total-actual" data-testid="total-actual">0%</span>
-    </div>
-    <div class="total-group">
-      <span class="total-label" style="color:var(--color-forecast)">Forecast</span>
-      <span class="total-value" id="total-forecast" data-testid="total-forecast" style="font-size:22px;color:var(--color-text-muted)">0%</span>
     </div>
   </div>
 
   <div class="project-list" id="project-list" data-testid="project-list"></div>
+
+  <!-- Section 2: Next Week — Forecast -->
+  <div class="section-divider" id="forecast-section-header">
+    <div class="section-divider-title forecast-title">Next Week — Forecast</div>
+    <div class="section-divider-sub" id="forecast-week-label"></div>
+  </div>
+
+  <div class="forecast-section-banner">
+    <div class="total-group">
+      <span class="total-label" style="color:var(--color-forecast)">Forecast Total</span>
+      <span class="forecast-section-total" id="total-forecast" data-testid="total-forecast">0%</span>
+    </div>
+  </div>
+
+  <div class="project-list" id="forecast-project-list" data-testid="forecast-project-list"></div>
 
   <div class="save-area">
     <button class="save-btn" id="save-btn" data-testid="save-btn">Save</button>
@@ -1151,8 +1270,6 @@
 
   <footer class="app-footer">
     <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">Created with Perplexity Computer</a>
-    <a href="#" class="insights-link" id="my-insights-link" data-testid="my-insights-link">My Insights</a>
-    <a href="#" class="admin-link" id="admin-link" data-testid="admin-link">Admin</a>
   </footer>
 </div>
 
@@ -1412,6 +1529,9 @@
   const totalActual = $('total-actual');
   const totalForecast = $('total-forecast');
   const projectList = $('project-list');
+  const forecastProjectList = $('forecast-project-list');
+  const actualsWeekLabel = $('actuals-week-label');
+  const forecastWeekLabel = $('forecast-week-label');
   const saveBtn = $('save-btn');
   const backBtn = $('back-btn');
   const adminLink = $('admin-link');
@@ -1457,6 +1577,18 @@
     sunday.setDate(monday.getDate() + 6);
     const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     return `${fmt(monday)} – ${fmt(sunday)}`;
+  }
+
+  function getNextWeek(weekStr) {
+    const [yearStr, wStr] = weekStr.split('-W');
+    let year = parseInt(yearStr);
+    let week = parseInt(wStr) + 1;
+    // ISO 8601: most years have 52 weeks, some have 53
+    const dec31 = new Date(year, 11, 31);
+    const dec31Day = dec31.getDay() || 7;
+    const maxWeek = (dec31Day === 4 || (dec31Day === 5 && new Date(year, 1, 29).getMonth() === 1)) ? 53 : 52;
+    if (week > maxWeek) { week = 1; year++; }
+    return `${year}-W${String(week).padStart(2, '0')}`;
   }
 
   function getAllWeeksSorted() {
@@ -1525,6 +1657,9 @@
     const canvas = $(canvasId);
     if (!canvas) return null;
     const ctx = canvas.getContext('2d');
+    // Ensure crisp rendering on retina displays
+    config.options = config.options || {};
+    config.options.devicePixelRatio = window.devicePixelRatio || 2;
     chartInstances[canvasId] = new Chart(ctx, config);
     return chartInstances[canvasId];
   }
@@ -1675,28 +1810,41 @@
     };
   }
 
-  // ─── Project List (with dual inputs) ───
+  // ─── Project List (split: actuals for currentWeek, forecasts for next week) ───
   function renderProjectList() {
     projectList.innerHTML = '';
+    forecastProjectList.innerHTML = '';
     const projects = appData.projects || [];
     const forecasts = appData.forecasts || {};
+    const nextWeek = getNextWeek(currentWeek);
+
+    // Update section labels
+    actualsWeekLabel.textContent = getWeekDateRange(currentWeek);
+    forecastWeekLabel.textContent = getWeekDateRange(nextWeek);
 
     projects.forEach((proj) => {
-      const key = `${currentWeek}|${currentPerson}|${proj}`;
-      const actualVal = appData.entries[key] || 0;
-      const forecastVal = forecasts[key] || 0;
+      const actualKey = `${currentWeek}|${currentPerson}|${proj}`;
+      const actualVal = appData.entries[actualKey] || 0;
+      // Show prior forecast for this week as reference (non-editable)
+      const priorForecastVal = forecasts[actualKey] || 0;
 
+      // ── Actuals row ──
       const row = document.createElement('div');
       row.className = 'project-row';
 
       const nameEl = document.createElement('div');
       nameEl.className = 'project-name';
       nameEl.textContent = proj;
+      if (priorForecastVal > 0) {
+        const ref = document.createElement('span');
+        ref.className = 'forecast-ref';
+        ref.textContent = `Forecasted: ${priorForecastVal}%`;
+        nameEl.appendChild(ref);
+      }
 
       const inputsGroup = document.createElement('div');
       inputsGroup.className = 'inputs-group';
 
-      // Actual input
       const actualWrap = document.createElement('div');
       actualWrap.className = 'pct-input-wrap';
 
@@ -1727,12 +1875,30 @@
 
       const actualSuffix = document.createElement('span');
       actualSuffix.className = 'pct-suffix';
-      actualSuffix.textContent = '% a';
+      actualSuffix.textContent = '%';
 
       actualWrap.appendChild(actualInput);
       actualWrap.appendChild(actualSuffix);
+      inputsGroup.appendChild(actualWrap);
 
-      // Forecast input
+      row.appendChild(nameEl);
+      row.appendChild(inputsGroup);
+      projectList.appendChild(row);
+
+      // ── Forecast row (for next week) ──
+      const forecastKey = `${nextWeek}|${currentPerson}|${proj}`;
+      const forecastVal = forecasts[forecastKey] || 0;
+
+      const fRow = document.createElement('div');
+      fRow.className = 'project-row';
+
+      const fNameEl = document.createElement('div');
+      fNameEl.className = 'project-name';
+      fNameEl.textContent = proj;
+
+      const fInputsGroup = document.createElement('div');
+      fInputsGroup.className = 'inputs-group';
+
       const forecastWrap = document.createElement('div');
       forecastWrap.className = 'pct-input-wrap';
 
@@ -1763,23 +1929,21 @@
 
       const forecastSuffix = document.createElement('span');
       forecastSuffix.className = 'pct-suffix';
-      forecastSuffix.textContent = '% f';
+      forecastSuffix.textContent = '%';
 
       forecastWrap.appendChild(forecastInput);
       forecastWrap.appendChild(forecastSuffix);
+      fInputsGroup.appendChild(forecastWrap);
 
-      inputsGroup.appendChild(actualWrap);
-      inputsGroup.appendChild(forecastWrap);
-
-      row.appendChild(nameEl);
-      row.appendChild(inputsGroup);
-      projectList.appendChild(row);
+      fRow.appendChild(fNameEl);
+      fRow.appendChild(fInputsGroup);
+      forecastProjectList.appendChild(fRow);
     });
   }
 
   function updateTotal() {
     const actualInputs = projectList.querySelectorAll('.actual-input');
-    const forecastInputs = projectList.querySelectorAll('.forecast-input');
+    const forecastInputs = forecastProjectList.querySelectorAll('.forecast-input');
 
     let actualTotal = 0;
     actualInputs.forEach((inp) => {
@@ -1835,7 +1999,7 @@
         freshData.weeks.sort();
       }
 
-      // Merge actuals
+      // Merge actuals (saved to currentWeek)
       const actualInputs = projectList.querySelectorAll('.actual-input');
       actualInputs.forEach((inp) => {
         const proj = inp.getAttribute('data-project');
@@ -1848,11 +2012,16 @@
         }
       });
 
-      // Merge forecasts
-      const forecastInputs = projectList.querySelectorAll('.forecast-input');
+      // Merge forecasts (saved to NEXT week)
+      const nextWeek = getNextWeek(currentWeek);
+      if (!freshData.weeks.includes(nextWeek)) {
+        freshData.weeks.push(nextWeek);
+        freshData.weeks.sort();
+      }
+      const forecastInputs = forecastProjectList.querySelectorAll('.forecast-input');
       forecastInputs.forEach((inp) => {
         const proj = inp.getAttribute('data-project');
-        const key = `${currentWeek}|${currentPerson}|${proj}`;
+        const key = `${nextWeek}|${currentPerson}|${proj}`;
         const val = parseInt(inp.value) || 0;
         if (val > 0) {
           freshData.forecasts[key] = val;
@@ -1973,6 +2142,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: true,
+          aspectRatio: 1.5,
           plugins: {
             legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 11 }, padding: 12 } },
             tooltip: {
@@ -2016,6 +2186,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: true,
+          aspectRatio: 2,
           scales: {
             y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
             x: { ticks: { font: { size: 10 } }, grid: { display: false } }
@@ -2080,6 +2251,7 @@
         options: {
           responsive: true,
           maintainAspectRatio: true,
+          aspectRatio: 2,
           scales: {
             y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
             x: { ticks: { font: { size: 10 } }, grid: { display: false } }
@@ -2487,6 +2659,7 @@
         indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: true,
+        aspectRatio: 2,
         scales: {
           x: {
             stacked: true,
@@ -2538,6 +2711,7 @@
       options: {
         responsive: true,
         maintainAspectRatio: true,
+        aspectRatio: 1.5,
         plugins: {
           legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
           tooltip: {
@@ -2598,6 +2772,7 @@
       options: {
         responsive: true,
         maintainAspectRatio: true,
+        aspectRatio: 2,
         scales: {
           y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
           x: { ticks: { font: { size: 10 } }, grid: { display: false } }
@@ -2685,6 +2860,7 @@
       options: {
         responsive: true,
         maintainAspectRatio: true,
+        aspectRatio: 2,
         scales: {
           y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
           x: { ticks: { font: { size: 10 } }, grid: { display: false } }
@@ -2748,6 +2924,7 @@
       options: {
         responsive: true,
         maintainAspectRatio: true,
+        aspectRatio: 2,
         scales: {
           y: {
             ticks: { callback: v => (v > 0 ? '+' : '') + v + '%', font: { size: 11 } },
