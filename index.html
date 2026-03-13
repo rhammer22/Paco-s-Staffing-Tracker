@@ -544,6 +544,29 @@
     color: white;
   }
 
+  .edit-btn {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-accent);
+    background: none;
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all var(--transition);
+  }
+
+  .edit-btn:hover {
+    background: var(--color-accent);
+    color: white;
+  }
+
+  .admin-list-btns {
+    display: flex;
+    gap: 6px;
+  }
+
   .admin-add-row {
     display: flex;
     gap: 8px;
@@ -2502,17 +2525,73 @@
     renderAdminInsights();
   }
 
+  function renameInData(oldName, newName, type) {
+    // type = 'person' or 'project'
+    const entries = appData.entries || {};
+    const forecasts = appData.forecasts || {};
+    const newEntries = {};
+    const newForecasts = {};
+
+    for (const [key, val] of Object.entries(entries)) {
+      const [week, person, project] = key.split('|');
+      const updatedPerson = type === 'person' && person === oldName ? newName : person;
+      const updatedProject = type === 'project' && project === oldName ? newName : project;
+      newEntries[`${week}|${updatedPerson}|${updatedProject}`] = val;
+    }
+    for (const [key, val] of Object.entries(forecasts)) {
+      const [week, person, project] = key.split('|');
+      const updatedPerson = type === 'person' && person === oldName ? newName : person;
+      const updatedProject = type === 'project' && project === oldName ? newName : project;
+      newForecasts[`${week}|${updatedPerson}|${updatedProject}`] = val;
+    }
+
+    appData.entries = newEntries;
+    appData.forecasts = newForecasts;
+  }
+
   function renderAdminPeople() {
     adminPeopleList.innerHTML = '';
     (appData.people || []).forEach((name) => {
       const item = document.createElement('div');
       item.className = 'admin-list-item';
       item.innerHTML = `<span>${name}</span>`;
-      const btn = document.createElement('button');
-      btn.className = 'remove-btn';
-      btn.textContent = 'Remove';
-      btn.setAttribute('data-testid', `remove-person-${name.replace(/\s+/g, '-')}`);
-      btn.addEventListener('click', async () => {
+
+      const btns = document.createElement('div');
+      btns.className = 'admin-list-btns';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-btn';
+      editBtn.textContent = 'Edit';
+      editBtn.setAttribute('data-testid', `edit-person-${name.replace(/\s+/g, '-')}`);
+      editBtn.addEventListener('click', async () => {
+        const newName = prompt(`Rename "${name}" to:`, name);
+        if (!newName || newName.trim() === '' || newName.trim() === name) return;
+        const trimmed = newName.trim();
+        if (appData.people.includes(trimmed)) {
+          showToast('That name already exists');
+          return;
+        }
+        const idx = appData.people.indexOf(name);
+        if (idx > -1) appData.people[idx] = trimmed;
+        renameInData(name, trimmed, 'person');
+        if (currentPerson === name) currentPerson = trimmed;
+        showLoading(true);
+        try {
+          await saveFullData(appData);
+          renderAdmin();
+          showToast(`Renamed to ${trimmed}`);
+        } catch (e) {
+          showToast('Failed to save changes');
+        } finally {
+          showLoading(false);
+        }
+      });
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = 'Remove';
+      removeBtn.setAttribute('data-testid', `remove-person-${name.replace(/\s+/g, '-')}`);
+      removeBtn.addEventListener('click', async () => {
         if (!confirm(`Remove ${name}?`)) return;
         appData.people = appData.people.filter(p => p !== name);
         showLoading(true);
@@ -2526,7 +2605,10 @@
           showLoading(false);
         }
       });
-      item.appendChild(btn);
+
+      btns.appendChild(editBtn);
+      btns.appendChild(removeBtn);
+      item.appendChild(btns);
       adminPeopleList.appendChild(item);
     });
   }
@@ -2537,11 +2619,42 @@
       const item = document.createElement('div');
       item.className = 'admin-list-item';
       item.innerHTML = `<span>${proj}</span>`;
-      const btn = document.createElement('button');
-      btn.className = 'remove-btn';
-      btn.textContent = 'Remove';
-      btn.setAttribute('data-testid', `remove-project-${proj.replace(/\s+/g, '-')}`);
-      btn.addEventListener('click', async () => {
+
+      const btns = document.createElement('div');
+      btns.className = 'admin-list-btns';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-btn';
+      editBtn.textContent = 'Edit';
+      editBtn.setAttribute('data-testid', `edit-project-${proj.replace(/\s+/g, '-')}`);
+      editBtn.addEventListener('click', async () => {
+        const newName = prompt(`Rename "${proj}" to:`, proj);
+        if (!newName || newName.trim() === '' || newName.trim() === proj) return;
+        const trimmed = newName.trim();
+        if (appData.projects.includes(trimmed)) {
+          showToast('That project already exists');
+          return;
+        }
+        const idx = appData.projects.indexOf(proj);
+        if (idx > -1) appData.projects[idx] = trimmed;
+        renameInData(proj, trimmed, 'project');
+        showLoading(true);
+        try {
+          await saveFullData(appData);
+          renderAdmin();
+          showToast(`Renamed to ${trimmed}`);
+        } catch (e) {
+          showToast('Failed to save changes');
+        } finally {
+          showLoading(false);
+        }
+      });
+
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'remove-btn';
+      removeBtn.textContent = 'Remove';
+      removeBtn.setAttribute('data-testid', `remove-project-${proj.replace(/\s+/g, '-')}`);
+      removeBtn.addEventListener('click', async () => {
         if (!confirm(`Remove ${proj}?`)) return;
         appData.projects = appData.projects.filter(p => p !== proj);
         showLoading(true);
@@ -2555,7 +2668,10 @@
           showLoading(false);
         }
       });
-      item.appendChild(btn);
+
+      btns.appendChild(editBtn);
+      btns.appendChild(removeBtn);
+      item.appendChild(btns);
       adminProjectsList.appendChild(item);
     });
   }
