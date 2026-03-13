@@ -1297,8 +1297,11 @@
     <h1 class="login-title">Paco's Staffing Tracker</h1>
     <p class="login-subtitle">Select your name to get started</p>
     <div id="person-buttons" data-testid="person-buttons"></div>
-    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--color-border-light);">
-      <button class="person-btn" id="login-admin-btn" data-testid="login-admin-btn" style="background:none;border:1px solid var(--color-text-muted);color:var(--color-text-secondary);font-size:13px;text-align:center;padding:10px 16px;">
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--color-border-light);display:flex;gap:8px;">
+      <button class="person-btn" id="login-paco-btn" data-testid="login-paco-btn" style="background:none;border:1px solid var(--color-text-muted);color:var(--color-text-secondary);font-size:13px;text-align:center;padding:10px 16px;flex:1;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>Paco's Dashboard
+      </button>
+      <button class="person-btn" id="login-admin-btn" data-testid="login-admin-btn" style="background:none;border:1px solid var(--color-text-muted);color:var(--color-text-secondary);font-size:13px;text-align:center;padding:10px 16px;flex:1;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px;margin-right:6px;"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Admin
       </button>
     </div>
@@ -1608,6 +1611,20 @@
   </div>
 </div>
 
+<!-- ─── Paco's Dashboard Login Modal ─── -->
+<div id="paco-modal" class="modal-overlay" data-testid="paco-modal">
+  <div class="modal-card">
+    <div class="modal-title">Paco's Dashboard</div>
+    <p style="font-size:13px;color:var(--color-text-secondary);margin:-8px 0 16px;">Enter your password to continue</p>
+    <input type="password" class="modal-input" id="paco-code-input" data-testid="paco-code-input" placeholder="Password" autocomplete="off">
+    <div class="modal-error" id="paco-error" data-testid="paco-error">Incorrect password</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="paco-cancel-btn" data-testid="paco-cancel-btn">Cancel</button>
+      <button class="modal-submit" id="paco-submit-btn" data-testid="paco-submit-btn">Enter</button>
+    </div>
+  </div>
+</div>
+
 <!-- ─── Save Warning Modal ─── -->
 <div id="save-warning-modal" class="modal-overlay" data-testid="save-warning-modal">
   <div class="modal-card">
@@ -1684,6 +1701,11 @@
   const adminCancelBtn = $('admin-cancel-btn');
   const adminSubmitBtn = $('admin-submit-btn');
   const adminBackBtn = $('admin-back-btn');
+  const pacoModal = $('paco-modal');
+  const pacoCodeInput = $('paco-code-input');
+  const pacoError = $('paco-error');
+  const pacoCancelBtn = $('paco-cancel-btn');
+  const pacoSubmitBtn = $('paco-submit-btn');
   const adminPeopleList = $('admin-people-list');
   const adminProjectsList = $('admin-projects-list');
   const addPersonInput = $('add-person-input');
@@ -2477,7 +2499,8 @@
   });
 
   function checkAdminCode() {
-    if (adminCodeInput.value === 'admin') {
+    const code = adminCodeInput.value.toLowerCase().trim();
+    if (code === 'admin' || code === 'paco') {
       adminModal.classList.remove('active');
       renderAdmin();
       showScreen('admin');
@@ -2498,6 +2521,36 @@
       showScreen('login');
     }
   });
+
+  // ─── Paco's Dashboard Modal ───
+  $('login-paco-btn').addEventListener('click', () => {
+    pacoModal.classList.add('active');
+    pacoCodeInput.value = '';
+    pacoError.style.display = 'none';
+    setTimeout(() => pacoCodeInput.focus(), 100);
+  });
+
+  pacoCancelBtn.addEventListener('click', () => {
+    pacoModal.classList.remove('active');
+  });
+
+  pacoSubmitBtn.addEventListener('click', () => checkPacoCode());
+  pacoCodeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') checkPacoCode();
+  });
+
+  function checkPacoCode() {
+    const code = pacoCodeInput.value.toLowerCase().trim();
+    if (code === 'paco') {
+      pacoModal.classList.remove('active');
+      renderAdmin();
+      showScreen('admin');
+    } else {
+      pacoError.style.display = 'block';
+      pacoCodeInput.value = '';
+      pacoCodeInput.focus();
+    }
+  }
 
   // ─── Admin Tabs ───
   document.querySelectorAll('.admin-tab-btn').forEach(btn => {
@@ -3149,14 +3202,19 @@
     const allW = isAllWeeks ? getAllWeeksSorted() : null;
     const barData = filteredPeople.map(person => {
       const row = { name: person };
+      let total = 0;
       filteredProjects.forEach(pr => {
+        let val;
         if (isAllWeeks) {
           const vals = allW.map(w => getEntry(w, person, pr)).filter(v => v > 0);
-          row[pr] = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / allW.length) : 0;
+          val = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / allW.length) : 0;
         } else {
-          row[pr] = getEntry(week, person, pr);
+          val = getEntry(week, person, pr);
         }
+        row[pr] = val;
+        total += val;
       });
+      row._total = total;
       return row;
     });
 
@@ -3165,40 +3223,65 @@
       return;
     }
 
+    // Only include projects that have at least some allocation
+    const activeProjects = filteredProjects.filter(pr =>
+      barData.some(d => (d[pr] || 0) > 0)
+    );
+
+    // Use first names as labels, add last initial if duplicate first names
+    const firstNames = barData.map(d => d.name.split(' ')[0]);
+    const labels = barData.map((d, i) => {
+      const first = d.name.split(' ')[0];
+      const dupes = firstNames.filter(f => f === first).length;
+      if (dupes > 1 && d.name.split(' ').length > 1) {
+        return first + ' ' + d.name.split(' ')[1][0] + '.';
+      }
+      return first;
+    });
+
     createChart('admin-breakdown-chart', {
       type: 'bar',
       data: {
-        labels: barData.map(d => d.name),
-        datasets: filteredProjects.map((pr, i) => ({
+        labels: labels,
+        datasets: activeProjects.map((pr, i) => ({
           label: pr,
-          data: barData.map(d => d[pr] || 0),
+          data: barData.map(d => {
+            const total = d._total;
+            if (total === 0) return 0;
+            return Math.round((d[pr] || 0) / total * 100);
+          }),
           backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
           borderWidth: 0,
-          borderRadius: 2
+          borderRadius: 0
         }))
       },
       options: {
-        indexAxis: 'y',
         responsive: true,
         maintainAspectRatio: true,
-        aspectRatio: 2,
+        aspectRatio: 1.6,
         scales: {
           x: {
             stacked: true,
-            max: 120,
-            ticks: { callback: v => v + '%', font: { size: 10 } },
-            grid: { color: '#e5e7eb' }
+            ticks: { font: { size: 11 } },
+            grid: { display: false }
           },
           y: {
             stacked: true,
-            ticks: { font: { size: 11 } },
-            grid: { display: false }
+            max: 100,
+            ticks: { callback: v => v + '%', font: { size: 10 } },
+            grid: { color: '#e5e7eb' }
           }
         },
         plugins: {
           legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
           tooltip: {
-            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
+            callbacks: {
+              label: (ctx) => {
+                const person = barData[ctx.dataIndex];
+                const rawVal = person[activeProjects[ctx.datasetIndex]] || 0;
+                return `${ctx.dataset.label}: ${ctx.raw}% (${rawVal}% actual)`;
+              }
+            }
           }
         }
       }
