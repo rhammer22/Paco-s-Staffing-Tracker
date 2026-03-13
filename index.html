@@ -1,0 +1,2848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+   ______                            __
+  / ____/___  ____ ___  ____  __  __/ /____  _____
+ / /   / __ \/ __ `__ \/ __ \/ / / / __/ _ \/ ___/
+/ /___/ /_/ / / / / / / /_/ / /_/ / /_/  __/ /
+\____/\____/_/ /_/ /_/ .___/\__,_/\__/\___/_/
+                    /_/
+        Created with Perplexity Computer
+        https://www.perplexity.ai/computer
+-->
+
+<!-- Perplexity Computer Attribution — SEO Meta Tags -->
+<meta name="generator" content="Perplexity Computer">
+<meta name="author" content="Perplexity Computer">
+<meta property="og:see_also" content="https://www.perplexity.ai/computer">
+<link rel="author" href="https://www.perplexity.ai/computer">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paco's Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --color-bg: #f8f9fa;
+    --color-surface: #ffffff;
+    --color-border: #e2e5e9;
+    --color-border-light: #eef0f2;
+    --color-text: #1a1d21;
+    --color-text-secondary: #5f6b7a;
+    --color-text-muted: #8b95a5;
+    --color-accent: #0f7b6c;
+    --color-accent-hover: #0a5f53;
+    --color-accent-light: #e6f5f2;
+    --color-danger: #dc3545;
+    --color-danger-bg: #fff0f0;
+    --color-success: #0f7b6c;
+    --color-success-bg: #e6f5f2;
+    --color-forecast: #6366f1;
+    --color-forecast-light: #eef2ff;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    --transition: 150ms ease;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.5;
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Login Screen ─── */
+  .login-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100dvh;
+    padding: 24px;
+  }
+
+  .login-card {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: 40px 32px;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+  }
+
+  .login-logo {
+    width: 48px;
+    height: 48px;
+    background: var(--color-accent);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+  }
+
+  .login-logo svg {
+    width: 28px;
+    height: 28px;
+    color: white;
+  }
+
+  .login-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+  }
+
+  .login-subtitle {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    margin-bottom: 28px;
+  }
+
+  .person-btn {
+    display: block;
+    width: 100%;
+    padding: 13px 16px;
+    margin-bottom: 8px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: all var(--transition);
+    text-align: left;
+  }
+
+  .person-btn:hover {
+    background: var(--color-accent-light);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .person-btn:active {
+    transform: scale(0.99);
+  }
+
+  /* ─── App Shell ─── */
+  .app-shell {
+    display: none;
+    min-height: 100dvh;
+  }
+
+  .app-shell.active { display: flex; flex-direction: column; }
+
+  .app-header {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 14px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all var(--transition);
+    color: var(--color-text-secondary);
+  }
+
+  .back-btn:hover {
+    background: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  .header-name {
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: -0.01em;
+  }
+
+  .week-select {
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 7px 12px;
+    background: var(--color-surface);
+    cursor: pointer;
+    transition: border-color var(--transition);
+    flex-shrink: 0;
+  }
+
+  .week-select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  /* ─── Total Banner ─── */
+  .total-banner {
+    background: var(--color-surface);
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+    gap: 16px;
+  }
+
+  .total-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .total-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .total-value {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--color-text);
+    transition: color var(--transition);
+  }
+
+  .total-value.over { color: var(--color-danger); }
+  .total-value.perfect { color: var(--color-success); }
+
+  .total-value.forecast-over { color: var(--color-danger); }
+  .total-value.forecast-perfect { color: var(--color-forecast); }
+
+  /* ─── Project Rows ─── */
+  .project-list {
+    flex: 1;
+    padding: 8px 0;
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .project-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--color-border-light);
+    transition: background var(--transition);
+    gap: 8px;
+  }
+
+  .project-row:last-child { border-bottom: none; }
+
+  .project-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--color-text);
+    flex: 1;
+    min-width: 0;
+    padding-right: 8px;
+  }
+
+  .inputs-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .pct-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+
+  .pct-input {
+    width: 56px;
+    padding: 7px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    text-align: right;
+    color: var(--color-text);
+    background: var(--color-bg);
+    transition: border-color var(--transition);
+    -moz-appearance: textfield;
+  }
+
+  .pct-input::placeholder {
+    color: var(--color-text-muted);
+    font-weight: 400;
+    opacity: 0.6;
+  }
+
+  .pct-input::-webkit-inner-spin-button,
+  .pct-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .pct-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    background: var(--color-surface);
+  }
+
+  .pct-input.has-value {
+    border-color: var(--color-accent);
+    background: var(--color-accent-light);
+  }
+
+  /* Forecast input styling */
+  .pct-input.forecast-input:focus {
+    border-color: var(--color-forecast);
+    background: var(--color-surface);
+  }
+
+  .pct-input.forecast-input.has-value {
+    border-color: var(--color-forecast);
+    border-style: dashed;
+    background: var(--color-forecast-light);
+  }
+
+  .pct-suffix {
+    font-size: 12px;
+    color: var(--color-text-muted);
+    font-weight: 500;
+  }
+
+  .pct-type-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+  }
+
+  .pct-type-label.actual-label { color: var(--color-accent); }
+  .pct-type-label.forecast-label { color: var(--color-forecast); }
+
+  /* ─── Save Button ─── */
+  .save-area {
+    padding: 16px 20px;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    max-width: 640px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .save-btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition);
+    letter-spacing: -0.01em;
+  }
+
+  .save-btn:hover { background: var(--color-accent-hover); }
+  .save-btn:active { transform: scale(0.99); }
+  .save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .save-btn.saved {
+    background: var(--color-success-bg);
+    color: var(--color-success);
+  }
+
+  /* ─── Footer / Admin link ─── */
+  .app-footer {
+    padding: 20px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--color-text-muted);
+  }
+
+  .app-footer a {
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: color var(--transition);
+  }
+
+  .app-footer a:hover { color: var(--color-text-secondary); }
+
+  .admin-link, .insights-link {
+    margin-left: 12px;
+    padding-left: 12px;
+    border-left: 1px solid var(--color-border);
+  }
+
+  /* ─── Admin Screen ─── */
+  .admin-screen {
+    display: none;
+    min-height: 100dvh;
+    flex-direction: column;
+  }
+
+  .admin-screen.active { display: flex; }
+
+  .admin-header {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .admin-title {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .admin-content {
+    flex: 1;
+    padding: 20px;
+    max-width: 960px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .admin-section {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .admin-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--color-text);
+    letter-spacing: -0.01em;
+  }
+
+  .admin-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--color-border-light);
+    font-size: 14px;
+  }
+
+  .admin-list-item:last-child { border-bottom: none; }
+
+  .remove-btn {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-danger);
+    background: none;
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all var(--transition);
+  }
+
+  .remove-btn:hover {
+    background: var(--color-danger);
+    color: white;
+  }
+
+  .admin-add-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .admin-input {
+    flex: 1;
+    padding: 9px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--color-text);
+    background: var(--color-bg);
+  }
+
+  .admin-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .admin-add-btn {
+    padding: 9px 16px;
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition);
+    white-space: nowrap;
+  }
+
+  .admin-add-btn:hover { background: var(--color-accent-hover); }
+
+  /* ─── Admin Summary Table ─── */
+  .summary-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 600px;
+  }
+
+  .summary-table th,
+  .summary-table td {
+    padding: 8px 10px;
+    text-align: center;
+    border: 1px solid var(--color-border-light);
+    white-space: nowrap;
+  }
+
+  .summary-table th {
+    background: var(--color-bg);
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    position: sticky;
+    top: 0;
+  }
+
+  .summary-table th:first-child,
+  .summary-table td:first-child {
+    text-align: left;
+    font-weight: 500;
+    position: sticky;
+    left: 0;
+    background: var(--color-surface);
+    z-index: 1;
+  }
+
+  .summary-table th:first-child {
+    background: var(--color-bg);
+    z-index: 2;
+  }
+
+  .summary-table td.has-val { background: var(--color-accent-light); font-weight: 600; }
+  .summary-table td.has-forecast { background: var(--color-forecast-light); font-weight: 600; }
+  .summary-table td.has-both { background: linear-gradient(135deg, var(--color-accent-light) 50%, var(--color-forecast-light) 50%); font-weight: 600; }
+  .summary-table td.total-cell { font-weight: 700; background: var(--color-bg); }
+  .summary-table td.over-cell { color: var(--color-danger); font-weight: 700; background: var(--color-danger-bg); }
+
+  .cell-actual { color: var(--color-accent); }
+  .cell-forecast { color: var(--color-forecast); }
+
+  /* ─── Admin Password Modal ─── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal-card {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    padding: 28px 24px;
+    width: 100%;
+    max-width: 340px;
+    text-align: center;
+  }
+
+  .modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .modal-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+
+  .modal-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .modal-error {
+    color: var(--color-danger);
+    font-size: 13px;
+    margin-bottom: 10px;
+    display: none;
+  }
+
+  .modal-btns {
+    display: flex;
+    gap: 8px;
+  }
+
+  .modal-cancel {
+    flex: 1;
+    padding: 10px;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition);
+  }
+
+  .modal-cancel:hover { background: var(--color-border-light); }
+
+  .modal-submit {
+    flex: 1;
+    padding: 10px;
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition);
+  }
+
+  .modal-submit:hover { background: var(--color-accent-hover); }
+
+  /* ─── Toast ─── */
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--color-text);
+    color: white;
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 300ms ease;
+    z-index: 300;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* ─── Loading ─── */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,0.8);
+    z-index: 250;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .loading-overlay.active { display: flex; }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── Admin week selector ─── */
+  .admin-week-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .admin-week-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+  }
+
+  /* ─── Admin Tabs ─── */
+  .admin-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+    padding: 0 20px;
+  }
+
+  .admin-tab-btn {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 12px 18px;
+    cursor: pointer;
+    transition: all var(--transition);
+    white-space: nowrap;
+  }
+
+  .admin-tab-btn:hover {
+    color: var(--color-text-secondary);
+  }
+
+  .admin-tab-btn.active {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+  }
+
+  .admin-tab-panel {
+    display: none;
+  }
+
+  .admin-tab-panel.active {
+    display: block;
+  }
+
+  /* ─── Insight Cards ─── */
+  .insight-card {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .insight-card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .insight-card-subtitle {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    margin-top: -12px;
+    margin-bottom: 16px;
+  }
+
+  .insight-filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+
+  .insight-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .insight-filter-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .insight-select {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    background: var(--color-surface);
+    cursor: pointer;
+  }
+
+  .insight-select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  /* ─── Utilization Bars ─── */
+  .util-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--color-bg);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    gap: 12px;
+  }
+
+  .util-name {
+    font-size: 13px;
+    font-weight: 500;
+    min-width: 90px;
+    flex-shrink: 0;
+  }
+
+  .util-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .util-bar-track {
+    width: 100px;
+    height: 6px;
+    background: var(--color-border-light);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .util-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+
+  .util-pct {
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    min-width: 44px;
+    text-align: right;
+  }
+
+  .util-status {
+    font-size: 11px;
+    font-weight: 500;
+    min-width: 80px;
+    text-align: right;
+  }
+
+  /* ─── Who hasn't logged ─── */
+  .not-logged-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .not-logged-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--color-danger-bg);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-danger);
+  }
+
+  .not-logged-item::before {
+    content: '●';
+    font-size: 8px;
+  }
+
+  .all-logged {
+    padding: 16px;
+    text-align: center;
+    color: var(--color-success);
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--color-success-bg);
+    border-radius: var(--radius-sm);
+  }
+
+  /* ─── Chart containers ─── */
+  .chart-container {
+    position: relative;
+    width: 100%;
+    max-height: 320px;
+  }
+
+  .chart-container canvas {
+    width: 100% !important;
+  }
+
+  /* ─── Insights Grid ─── */
+  .insights-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 700px) {
+    .insights-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .insights-grid .insight-card {
+    margin-bottom: 0;
+  }
+
+  /* ─── My Insights Screen ─── */
+  .my-insights-screen {
+    display: none;
+    min-height: 100dvh;
+    flex-direction: column;
+  }
+
+  .my-insights-screen.active { display: flex; }
+
+  .my-insights-header {
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .my-insights-title {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .my-insights-content {
+    flex: 1;
+    padding: 20px;
+    max-width: 700px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* ─── Accuracy Cards ─── */
+  .accuracy-card {
+    display: flex;
+    align-items: stretch;
+    background: var(--color-bg);
+    border-radius: var(--radius-sm);
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+
+  .accuracy-border {
+    width: 4px;
+    flex-shrink: 0;
+  }
+
+  .accuracy-body {
+    flex: 1;
+    padding: 12px 14px;
+  }
+
+  .accuracy-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .accuracy-name {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .accuracy-pct {
+    font-size: 13px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .accuracy-bar-track {
+    width: 100%;
+    height: 6px;
+    background: var(--color-border-light);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .accuracy-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+  }
+
+  .accuracy-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--color-text-secondary);
+  }
+
+  .accuracy-stat {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .accuracy-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 480px) {
+    .login-card { padding: 32px 24px; }
+    .total-value { font-size: 22px; }
+    .project-name { font-size: 13px; }
+    .pct-input { width: 48px; font-size: 13px; padding: 6px 6px; }
+    .util-bar-track { width: 60px; }
+    .util-name { min-width: 70px; font-size: 12px; }
+    .util-status { min-width: 60px; font-size: 10px; }
+    .admin-tab-btn { padding: 10px 12px; font-size: 12px; }
+    .inputs-group {
+      flex-direction: column;
+      gap: 4px;
+    }
+    .project-row {
+      flex-wrap: wrap;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── Login Screen ─── -->
+<div id="login-screen" class="login-screen" data-testid="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1"/>
+        <rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/>
+        <rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+    </div>
+    <h1 class="login-title">Paco's Tracker</h1>
+    <p class="login-subtitle">Select your name to get started</p>
+    <div id="person-buttons" data-testid="person-buttons"></div>
+  </div>
+</div>
+
+<!-- ─── Main Entry Screen ─── -->
+<div id="app-shell" class="app-shell" data-testid="app-shell">
+  <header class="app-header">
+    <div class="header-top">
+      <div class="header-left">
+        <button class="back-btn" id="back-btn" data-testid="back-btn" aria-label="Go back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span class="header-name" id="header-name" data-testid="header-name"></span>
+      </div>
+      <select id="week-select" class="week-select" data-testid="week-select"></select>
+    </div>
+  </header>
+
+  <div class="total-banner" data-testid="total-banner">
+    <div class="total-group">
+      <span class="total-label">Actual</span>
+      <span class="total-value" id="total-actual" data-testid="total-actual">0%</span>
+    </div>
+    <div class="total-group">
+      <span class="total-label" style="color:var(--color-forecast)">Forecast</span>
+      <span class="total-value" id="total-forecast" data-testid="total-forecast" style="font-size:22px;color:var(--color-text-muted)">0%</span>
+    </div>
+  </div>
+
+  <div class="project-list" id="project-list" data-testid="project-list"></div>
+
+  <div class="save-area">
+    <button class="save-btn" id="save-btn" data-testid="save-btn">Save</button>
+  </div>
+
+  <footer class="app-footer">
+    <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">Created with Perplexity Computer</a>
+    <a href="#" class="insights-link" id="my-insights-link" data-testid="my-insights-link">My Insights</a>
+    <a href="#" class="admin-link" id="admin-link" data-testid="admin-link">Admin</a>
+  </footer>
+</div>
+
+<!-- ─── My Insights Screen (team member) ─── -->
+<div id="my-insights-screen" class="my-insights-screen" data-testid="my-insights-screen">
+  <div class="my-insights-header">
+    <button class="back-btn" id="my-insights-back-btn" data-testid="my-insights-back-btn" aria-label="Go back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="my-insights-title">My Insights</span>
+  </div>
+  <div class="my-insights-content" id="my-insights-content">
+    <div class="insight-filters">
+      <div class="insight-filter-group">
+        <span class="insight-filter-label">Week</span>
+        <select class="insight-select" id="my-insight-week-select" data-testid="my-insight-week-select"></select>
+      </div>
+    </div>
+    <!-- My Utilization -->
+    <div class="insight-card" data-testid="my-utilization-card">
+      <div class="insight-card-title">My Utilization</div>
+      <div id="my-utilization-content"></div>
+    </div>
+    <!-- My Time Split pie -->
+    <div class="insight-card" data-testid="my-pie-card">
+      <div class="insight-card-title">My Time Split</div>
+      <div class="chart-container">
+        <canvas id="my-pie-chart" data-testid="my-pie-chart"></canvas>
+      </div>
+    </div>
+    <!-- My Trend line -->
+    <div class="insight-card" data-testid="my-trend-card">
+      <div class="insight-card-title">My Trend Over Time</div>
+      <div class="chart-container">
+        <canvas id="my-trend-chart" data-testid="my-trend-chart"></canvas>
+      </div>
+    </div>
+    <!-- My Actual vs Forecast -->
+    <div class="insight-card" data-testid="my-forecast-card">
+      <div class="insight-card-title">My Actual vs Forecast</div>
+      <div class="insight-card-subtitle">Solid = actual · Dashed = forecast</div>
+      <div class="chart-container">
+        <canvas id="my-forecast-chart" data-testid="my-forecast-chart"></canvas>
+      </div>
+    </div>
+  </div>
+  <footer class="app-footer">
+    <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">Created with Perplexity Computer</a>
+  </footer>
+</div>
+
+<!-- ─── Admin Screen ─── -->
+<div id="admin-screen" class="admin-screen" data-testid="admin-screen">
+  <div class="admin-header">
+    <button class="back-btn" id="admin-back-btn" data-testid="admin-back-btn" aria-label="Go back">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <span class="admin-title">Admin</span>
+  </div>
+
+  <!-- Admin Tabs -->
+  <div class="admin-tabs" data-testid="admin-tabs">
+    <button class="admin-tab-btn active" data-tab="all-entries" data-testid="tab-all-entries">All Entries</button>
+    <button class="admin-tab-btn" data-tab="insights" data-testid="tab-insights">Insights</button>
+    <button class="admin-tab-btn" data-tab="setup" data-testid="tab-setup">Setup</button>
+  </div>
+
+  <div class="admin-content">
+    <!-- Tab 1: All Entries -->
+    <div class="admin-tab-panel active" id="panel-all-entries" data-testid="panel-all-entries">
+      <div class="admin-section">
+        <div class="admin-section-title">Weekly Summary</div>
+        <div class="admin-week-row">
+          <span class="admin-week-label">Week:</span>
+          <select id="admin-week-select" class="week-select" data-testid="admin-week-select"></select>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:10px;">
+          Cells show <span class="cell-actual" style="font-weight:600">Actual</span> / <span class="cell-forecast" style="font-weight:600">Forecast</span>
+        </div>
+        <div class="summary-table-wrap">
+          <table class="summary-table" id="summary-table" data-testid="summary-table">
+            <thead id="summary-thead"></thead>
+            <tbody id="summary-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Insights -->
+    <div class="admin-tab-panel" id="panel-insights" data-testid="panel-insights">
+      <!-- Filters -->
+      <div class="insight-filters">
+        <div class="insight-filter-group">
+          <span class="insight-filter-label">Week</span>
+          <select class="insight-select" id="admin-insight-week" data-testid="admin-insight-week"></select>
+        </div>
+        <div class="insight-filter-group">
+          <span class="insight-filter-label">Person</span>
+          <select class="insight-select" id="admin-insight-person" data-testid="admin-insight-person">
+            <option value="all">All</option>
+          </select>
+        </div>
+        <div class="insight-filter-group">
+          <span class="insight-filter-label">Project</span>
+          <select class="insight-select" id="admin-insight-project" data-testid="admin-insight-project">
+            <option value="all">All</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Utilization -->
+      <div class="insight-card" data-testid="admin-utilization-card">
+        <div class="insight-card-title">Utilization</div>
+        <div id="admin-utilization-content"></div>
+      </div>
+
+      <!-- Who hasn't logged -->
+      <div class="insight-card" data-testid="admin-not-logged-card">
+        <div class="insight-card-title">Who Hasn't Logged</div>
+        <div id="admin-not-logged-content"></div>
+      </div>
+
+      <!-- Person Breakdown + Project Share -->
+      <div class="insights-grid">
+        <div class="insight-card" data-testid="admin-breakdown-card">
+          <div class="insight-card-title">Person Breakdown</div>
+          <div class="chart-container">
+            <canvas id="admin-breakdown-chart" data-testid="admin-breakdown-chart"></canvas>
+          </div>
+        </div>
+        <div class="insight-card" data-testid="admin-pie-card">
+          <div class="insight-card-title">Project Share</div>
+          <div class="chart-container">
+            <canvas id="admin-pie-chart" data-testid="admin-pie-chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trend -->
+      <div class="insight-card" style="margin-top:16px" data-testid="admin-trend-card">
+        <div class="insight-card-title">Project Trend Over Time</div>
+        <div class="chart-container">
+          <canvas id="admin-trend-chart" data-testid="admin-trend-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Actual vs Forecast Trend -->
+      <div class="insight-card" style="margin-top:16px" data-testid="admin-avf-trend-card">
+        <div class="insight-card-title">Actual vs Forecast Trend</div>
+        <div class="insight-card-subtitle">Solid = actual · Dashed = forecast</div>
+        <div class="chart-container">
+          <canvas id="admin-avf-trend-chart" data-testid="admin-avf-trend-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Forecast Divergence -->
+      <div class="insight-card" style="margin-top:16px" data-testid="admin-divergence-card">
+        <div class="insight-card-title">Forecast Divergence</div>
+        <div class="insight-card-subtitle">Above 0 = overestimated · Below 0 = underestimated</div>
+        <div class="chart-container">
+          <canvas id="admin-divergence-chart" data-testid="admin-divergence-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Estimation Accuracy by Person -->
+      <div class="insight-card" style="margin-top:16px" data-testid="admin-accuracy-card">
+        <div class="insight-card-title">Estimation Accuracy by Person</div>
+        <div class="insight-card-subtitle">On target = within ±5% of actual</div>
+        <div id="admin-accuracy-content"></div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Setup -->
+    <div class="admin-tab-panel" id="panel-setup" data-testid="panel-setup">
+      <!-- People Management -->
+      <div class="admin-section">
+        <div class="admin-section-title">People</div>
+        <div id="admin-people-list" data-testid="admin-people-list"></div>
+        <div class="admin-add-row">
+          <input class="admin-input" id="add-person-input" data-testid="add-person-input" placeholder="New person name">
+          <button class="admin-add-btn" id="add-person-btn" data-testid="add-person-btn">Add</button>
+        </div>
+      </div>
+
+      <!-- Projects Management -->
+      <div class="admin-section">
+        <div class="admin-section-title">Projects</div>
+        <div id="admin-projects-list" data-testid="admin-projects-list"></div>
+        <div class="admin-add-row">
+          <input class="admin-input" id="add-project-input" data-testid="add-project-input" placeholder="New project name">
+          <button class="admin-add-btn" id="add-project-btn" data-testid="add-project-btn">Add</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="app-footer">
+    <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">Created with Perplexity Computer</a>
+  </footer>
+</div>
+
+<!-- ─── Admin Password Modal ─── -->
+<div id="admin-modal" class="modal-overlay" data-testid="admin-modal">
+  <div class="modal-card">
+    <div class="modal-title">Enter Admin Code</div>
+    <input type="password" class="modal-input" id="admin-code-input" data-testid="admin-code-input" placeholder="Code" autocomplete="off">
+    <div class="modal-error" id="admin-error" data-testid="admin-error">Incorrect code</div>
+    <div class="modal-btns">
+      <button class="modal-cancel" id="admin-cancel-btn" data-testid="admin-cancel-btn">Cancel</button>
+      <button class="modal-submit" id="admin-submit-btn" data-testid="admin-submit-btn">Enter</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Toast ─── -->
+<div id="toast" class="toast" data-testid="toast"></div>
+
+<!-- ─── Loading ─── -->
+<div id="loading" class="loading-overlay">
+  <div class="spinner"></div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ─── Supabase Config ───
+  const SUPABASE_URL = 'https://vzshpzfuywhbvnblywzo.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_MFH8SdH_jS9fSrJ_g-T4Rw_vwB7WKPv';
+  const TABLE = 'tracker_store';
+  const ROW_ID = 'time-tracker-v2';
+
+  const CANONICAL_PROJECTS = [
+    'DSR', '1031 - AM', '1031 - New Deals', 'Aloft', 'WNY', 'WBC',
+    'DGO', 'CW', '3-Pack', 'ALTs', 'Ai', 'QOZ', 'Other - TRP', 'Other - TCP'
+  ];
+
+  const CHART_COLORS = ["#3b82f6","#ef4444","#10b981","#f59e0b","#8b5cf6","#ec4899","#06b6d4","#84cc16","#f97316","#6366f1"];
+
+  // ─── State ───
+  let appData = null;
+  let currentPerson = null;
+  let currentWeek = null;
+  let activeAdminTab = 'all-entries';
+
+  // Chart instances (so we can destroy before re-creating)
+  let chartInstances = {};
+
+  // ─── DOM Refs ───
+  const $ = (id) => document.getElementById(id);
+  const loginScreen = $('login-screen');
+  const appShell = $('app-shell');
+  const adminScreen = $('admin-screen');
+  const myInsightsScreen = $('my-insights-screen');
+  const personButtons = $('person-buttons');
+  const headerName = $('header-name');
+  const weekSelect = $('week-select');
+  const totalActual = $('total-actual');
+  const totalForecast = $('total-forecast');
+  const projectList = $('project-list');
+  const saveBtn = $('save-btn');
+  const backBtn = $('back-btn');
+  const adminLink = $('admin-link');
+  const myInsightsLink = $('my-insights-link');
+  const adminModal = $('admin-modal');
+  const adminCodeInput = $('admin-code-input');
+  const adminError = $('admin-error');
+  const adminCancelBtn = $('admin-cancel-btn');
+  const adminSubmitBtn = $('admin-submit-btn');
+  const adminBackBtn = $('admin-back-btn');
+  const adminPeopleList = $('admin-people-list');
+  const adminProjectsList = $('admin-projects-list');
+  const addPersonInput = $('add-person-input');
+  const addPersonBtn = $('add-person-btn');
+  const addProjectInput = $('add-project-input');
+  const addProjectBtn = $('add-project-btn');
+  const adminWeekSelect = $('admin-week-select');
+  const summaryThead = $('summary-thead');
+  const summaryTbody = $('summary-tbody');
+  const toast = $('toast');
+  const loading = $('loading');
+
+  // ─── Helpers ───
+  function getCurrentWeek() {
+    const now = new Date();
+    const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+  }
+
+  function getWeekDateRange(weekStr) {
+    const [yearStr, wStr] = weekStr.split('-W');
+    const year = parseInt(yearStr);
+    const week = parseInt(wStr);
+    const jan4 = new Date(year, 0, 4);
+    const dayOfWeek = jan4.getDay() || 7;
+    const monday = new Date(jan4);
+    monday.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `${fmt(monday)} – ${fmt(sunday)}`;
+  }
+
+  function getAllWeeksSorted() {
+    const weeks = new Set(appData.weeks || []);
+    weeks.add(getCurrentWeek());
+    return [...weeks].sort();
+  }
+
+  function getEntry(week, person, project) {
+    const key = `${week}|${person}|${project}`;
+    return (appData.entries || {})[key] || 0;
+  }
+
+  function getForecast(week, person, project) {
+    const key = `${week}|${person}|${project}`;
+    return (appData.forecasts || {})[key] || 0;
+  }
+
+  function getPersonTotal(week, person) {
+    let total = 0;
+    (appData.projects || []).forEach(proj => {
+      total += getEntry(week, person, proj);
+    });
+    return total;
+  }
+
+  function getPersonForecastTotal(week, person) {
+    let total = 0;
+    (appData.projects || []).forEach(proj => {
+      total += getForecast(week, person, proj);
+    });
+    return total;
+  }
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2500);
+  }
+
+  function showLoading(show) {
+    loading.classList.toggle('active', show);
+  }
+
+  function showScreen(screen) {
+    loginScreen.style.display = 'none';
+    appShell.classList.remove('active');
+    adminScreen.classList.remove('active');
+    myInsightsScreen.classList.remove('active');
+    if (screen === 'login') loginScreen.style.display = '';
+    else if (screen === 'app') appShell.classList.add('active');
+    else if (screen === 'admin') adminScreen.classList.add('active');
+    else if (screen === 'my-insights') myInsightsScreen.classList.add('active');
+  }
+
+  // ─── Chart Helper ───
+  function destroyChart(id) {
+    if (chartInstances[id]) {
+      chartInstances[id].destroy();
+      delete chartInstances[id];
+    }
+  }
+
+  function createChart(canvasId, config) {
+    destroyChart(canvasId);
+    const canvas = $(canvasId);
+    if (!canvas) return null;
+    const ctx = canvas.getContext('2d');
+    chartInstances[canvasId] = new Chart(ctx, config);
+    return chartInstances[canvasId];
+  }
+
+  // ─── Supabase REST API ───
+  async function fetchData() {
+    const url = `${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${ROW_ID}&select=data`;
+    const resp = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
+    const rows = await resp.json();
+    if (rows.length === 0) {
+      const newData = {
+        weeks: [getCurrentWeek()],
+        people: ['Reed Hammer', 'Chris Gauch', 'Katie Zhu', 'Landon Lichenstein', 'Chris Chu'],
+        projects: [...CANONICAL_PROJECTS],
+        entries: {},
+        forecasts: {}
+      };
+      await saveFullData(newData);
+      return newData;
+    }
+    const data = rows[0].data;
+    // Initialize forecasts if missing
+    if (!data.forecasts) data.forecasts = {};
+    return data;
+  }
+
+  async function saveFullData(data) {
+    const url = `${SUPABASE_URL}/rest/v1/${TABLE}?id=eq.${ROW_ID}`;
+    const resp = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({ data })
+    });
+    if (!resp.ok) {
+      if (resp.status === 404 || resp.status === 406) {
+        const postResp = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ id: ROW_ID, data })
+        });
+        if (!postResp.ok) throw new Error(`Save failed: ${postResp.status}`);
+      } else {
+        throw new Error(`Save failed: ${resp.status}`);
+      }
+    }
+  }
+
+  // ─── Init ───
+  async function init() {
+    showLoading(true);
+    try {
+      appData = await fetchData();
+      mergeCanonicalProjects();
+      renderLoginScreen();
+      showScreen('login');
+    } catch (e) {
+      console.error('Failed to load data:', e);
+      showToast('Failed to connect to database');
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  function mergeCanonicalProjects() {
+    if (!appData) return;
+    const existingSet = new Set(appData.projects || []);
+    for (const p of CANONICAL_PROJECTS) {
+      if (!existingSet.has(p)) {
+        appData.projects.push(p);
+      }
+    }
+  }
+
+  // ─── Login Screen ───
+  function renderLoginScreen() {
+    personButtons.innerHTML = '';
+    const people = appData.people || [];
+    people.forEach((name) => {
+      const btn = document.createElement('button');
+      btn.className = 'person-btn';
+      btn.textContent = name;
+      btn.setAttribute('data-testid', `person-btn-${name.replace(/\s+/g, '-')}`);
+      btn.addEventListener('click', () => selectPerson(name));
+      personButtons.appendChild(btn);
+    });
+  }
+
+  // ─── Person Selection ───
+  function selectPerson(name) {
+    currentPerson = name;
+    currentWeek = getCurrentWeek();
+    headerName.textContent = name;
+    renderWeekSelector();
+    renderProjectList();
+    updateTotal();
+    showScreen('app');
+  }
+
+  // ─── Week Selector ───
+  function renderWeekSelector() {
+    weekSelect.innerHTML = '';
+    const weeks = new Set(appData.weeks || []);
+    weeks.add(getCurrentWeek());
+
+    const cw = getCurrentWeek();
+    const cwParts = cw.split('-W');
+    const cwYear = parseInt(cwParts[0]);
+    const cwNum = parseInt(cwParts[1]);
+
+    const allWeeks = new Set(weeks);
+    for (let i = -4; i <= 1; i++) {
+      let wn = cwNum + i;
+      let yr = cwYear;
+      if (wn < 1) { wn += 52; yr--; }
+      if (wn > 52) { wn -= 52; yr++; }
+      allWeeks.add(`${yr}-W${String(wn).padStart(2, '0')}`);
+    }
+
+    const sorted = [...allWeeks].sort().reverse();
+    sorted.forEach((w) => {
+      const opt = document.createElement('option');
+      opt.value = w;
+      opt.textContent = `${w}  (${getWeekDateRange(w)})`;
+      if (w === currentWeek) opt.selected = true;
+      weekSelect.appendChild(opt);
+    });
+
+    weekSelect.onchange = () => {
+      currentWeek = weekSelect.value;
+      renderProjectList();
+      updateTotal();
+    };
+  }
+
+  // ─── Project List (with dual inputs) ───
+  function renderProjectList() {
+    projectList.innerHTML = '';
+    const projects = appData.projects || [];
+    const forecasts = appData.forecasts || {};
+
+    projects.forEach((proj) => {
+      const key = `${currentWeek}|${currentPerson}|${proj}`;
+      const actualVal = appData.entries[key] || 0;
+      const forecastVal = forecasts[key] || 0;
+
+      const row = document.createElement('div');
+      row.className = 'project-row';
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'project-name';
+      nameEl.textContent = proj;
+
+      const inputsGroup = document.createElement('div');
+      inputsGroup.className = 'inputs-group';
+
+      // Actual input
+      const actualWrap = document.createElement('div');
+      actualWrap.className = 'pct-input-wrap';
+
+      const actualInput = document.createElement('input');
+      actualInput.type = 'number';
+      actualInput.className = 'pct-input actual-input' + (actualVal > 0 ? ' has-value' : '');
+      actualInput.min = '0';
+      actualInput.max = '100';
+      actualInput.step = '5';
+      actualInput.value = actualVal > 0 ? actualVal : '';
+      actualInput.placeholder = '0';
+      actualInput.setAttribute('data-testid', `input-actual-${proj.replace(/\s+/g, '-')}`);
+      actualInput.setAttribute('data-project', proj);
+      actualInput.setAttribute('data-type', 'actual');
+      actualInput.setAttribute('inputmode', 'numeric');
+
+      actualInput.addEventListener('input', () => {
+        actualInput.classList.toggle('has-value', actualInput.value !== '' && actualInput.value !== '0');
+        updateTotal();
+      });
+
+      actualInput.addEventListener('focus', () => {
+        if (actualInput.value === '0' || actualInput.value === '') {
+          actualInput.value = '';
+          actualInput.select();
+        }
+      });
+
+      const actualSuffix = document.createElement('span');
+      actualSuffix.className = 'pct-suffix';
+      actualSuffix.textContent = '% a';
+
+      actualWrap.appendChild(actualInput);
+      actualWrap.appendChild(actualSuffix);
+
+      // Forecast input
+      const forecastWrap = document.createElement('div');
+      forecastWrap.className = 'pct-input-wrap';
+
+      const forecastInput = document.createElement('input');
+      forecastInput.type = 'number';
+      forecastInput.className = 'pct-input forecast-input' + (forecastVal > 0 ? ' has-value' : '');
+      forecastInput.min = '0';
+      forecastInput.max = '100';
+      forecastInput.step = '5';
+      forecastInput.value = forecastVal > 0 ? forecastVal : '';
+      forecastInput.placeholder = '0';
+      forecastInput.setAttribute('data-testid', `input-forecast-${proj.replace(/\s+/g, '-')}`);
+      forecastInput.setAttribute('data-project', proj);
+      forecastInput.setAttribute('data-type', 'forecast');
+      forecastInput.setAttribute('inputmode', 'numeric');
+
+      forecastInput.addEventListener('input', () => {
+        forecastInput.classList.toggle('has-value', forecastInput.value !== '' && forecastInput.value !== '0');
+        updateTotal();
+      });
+
+      forecastInput.addEventListener('focus', () => {
+        if (forecastInput.value === '0' || forecastInput.value === '') {
+          forecastInput.value = '';
+          forecastInput.select();
+        }
+      });
+
+      const forecastSuffix = document.createElement('span');
+      forecastSuffix.className = 'pct-suffix';
+      forecastSuffix.textContent = '% f';
+
+      forecastWrap.appendChild(forecastInput);
+      forecastWrap.appendChild(forecastSuffix);
+
+      inputsGroup.appendChild(actualWrap);
+      inputsGroup.appendChild(forecastWrap);
+
+      row.appendChild(nameEl);
+      row.appendChild(inputsGroup);
+      projectList.appendChild(row);
+    });
+  }
+
+  function updateTotal() {
+    const actualInputs = projectList.querySelectorAll('.actual-input');
+    const forecastInputs = projectList.querySelectorAll('.forecast-input');
+
+    let actualTotal = 0;
+    actualInputs.forEach((inp) => {
+      actualTotal += parseInt(inp.value) || 0;
+    });
+
+    let forecastTotal = 0;
+    forecastInputs.forEach((inp) => {
+      forecastTotal += parseInt(inp.value) || 0;
+    });
+
+    totalActual.textContent = `${actualTotal}%`;
+    totalActual.classList.remove('over', 'perfect');
+    if (actualTotal > 100) totalActual.classList.add('over');
+    else if (actualTotal === 100) totalActual.classList.add('perfect');
+
+    totalForecast.textContent = `${forecastTotal}%`;
+    totalForecast.classList.remove('forecast-over', 'forecast-perfect');
+    totalForecast.style.color = '';
+    if (forecastTotal > 100) {
+      totalForecast.classList.add('forecast-over');
+    } else if (forecastTotal === 100) {
+      totalForecast.classList.add('forecast-perfect');
+    } else {
+      totalForecast.style.color = 'var(--color-text-muted)';
+    }
+  }
+
+  // ─── Save (with forecasts) ───
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+    showLoading(true);
+
+    try {
+      const freshData = await fetchData();
+      // Ensure forecasts exists
+      if (!freshData.forecasts) freshData.forecasts = {};
+
+      const existingSet = new Set(freshData.projects || []);
+      for (const p of CANONICAL_PROJECTS) {
+        if (!existingSet.has(p)) {
+          freshData.projects.push(p);
+        }
+      }
+      for (const p of (appData.projects || [])) {
+        if (!existingSet.has(p) && !freshData.projects.includes(p)) {
+          freshData.projects.push(p);
+        }
+      }
+      if (!freshData.weeks.includes(currentWeek)) {
+        freshData.weeks.push(currentWeek);
+        freshData.weeks.sort();
+      }
+
+      // Merge actuals
+      const actualInputs = projectList.querySelectorAll('.actual-input');
+      actualInputs.forEach((inp) => {
+        const proj = inp.getAttribute('data-project');
+        const key = `${currentWeek}|${currentPerson}|${proj}`;
+        const val = parseInt(inp.value) || 0;
+        if (val > 0) {
+          freshData.entries[key] = val;
+        } else {
+          delete freshData.entries[key];
+        }
+      });
+
+      // Merge forecasts
+      const forecastInputs = projectList.querySelectorAll('.forecast-input');
+      forecastInputs.forEach((inp) => {
+        const proj = inp.getAttribute('data-project');
+        const key = `${currentWeek}|${currentPerson}|${proj}`;
+        const val = parseInt(inp.value) || 0;
+        if (val > 0) {
+          freshData.forecasts[key] = val;
+        } else {
+          delete freshData.forecasts[key];
+        }
+      });
+
+      await saveFullData(freshData);
+      appData = freshData;
+
+      saveBtn.textContent = 'Saved ✓';
+      saveBtn.classList.add('saved');
+      showToast('Hours saved successfully');
+
+      setTimeout(() => {
+        saveBtn.textContent = 'Save';
+        saveBtn.classList.remove('saved');
+        saveBtn.disabled = false;
+      }, 2000);
+    } catch (e) {
+      console.error('Save failed:', e);
+      showToast('Failed to save. Please try again.');
+      saveBtn.textContent = 'Save';
+      saveBtn.disabled = false;
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  // ─── Back Button ───
+  backBtn.addEventListener('click', () => {
+    currentPerson = null;
+    renderLoginScreen();
+    showScreen('login');
+  });
+
+  // ─── My Insights ───
+  myInsightsLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    renderMyInsights();
+    showScreen('my-insights');
+  });
+
+  $('my-insights-back-btn').addEventListener('click', () => {
+    if (currentPerson) {
+      renderProjectList();
+      updateTotal();
+      showScreen('app');
+    } else {
+      renderLoginScreen();
+      showScreen('login');
+    }
+  });
+
+  function renderMyInsights() {
+    if (!currentPerson || !appData) return;
+    const weekSel = $('my-insight-week-select');
+    const weeks = getAllWeeksSorted().reverse();
+
+    weekSel.innerHTML = '';
+    weeks.forEach(w => {
+      const opt = document.createElement('option');
+      opt.value = w;
+      opt.textContent = `${w}  (${getWeekDateRange(w)})`;
+      if (w === (currentWeek || getCurrentWeek())) opt.selected = true;
+      weekSel.appendChild(opt);
+    });
+
+    weekSel.onchange = () => renderMyInsightsCharts();
+    renderMyInsightsCharts();
+  }
+
+  function renderMyInsightsCharts() {
+    const week = $('my-insight-week-select').value;
+    if (!week || !currentPerson) return;
+
+    const projects = appData.projects || [];
+
+    // My Utilization
+    const total = getPersonTotal(week, currentPerson);
+    const utilDiv = $('my-utilization-content');
+    const st = total === 100 ? 'ok' : total > 100 ? 'over' : total === 0 ? 'empty' : 'under';
+    const colors = { ok: '#0f7b6c', over: '#dc3545', under: '#f59e0b', empty: '#8b95a5' };
+    const labels = { ok: 'Balanced', over: `Over ${total - 100}%`, under: `${100 - total}% unallocated`, empty: 'No data' };
+    utilDiv.innerHTML = `
+      <div class="util-row" style="border-left: 3px solid ${colors[st]}">
+        <span class="util-name">${currentPerson}</span>
+        <div class="util-right">
+          <div class="util-bar-track">
+            <div class="util-bar-fill" style="width:${Math.min(total, 100)}%;background:${colors[st]}"></div>
+          </div>
+          <span class="util-pct" style="color:${colors[st]}">${total}%</span>
+          <span class="util-status" style="color:${colors[st]}">${labels[st]}</span>
+        </div>
+      </div>
+    `;
+
+    // My Time Split (Pie/Doughnut)
+    const pieData = projects.map((pr, i) => ({
+      name: pr,
+      value: getEntry(week, currentPerson, pr),
+      color: CHART_COLORS[i % CHART_COLORS.length]
+    })).filter(d => d.value > 0);
+
+    if (pieData.length > 0) {
+      createChart('my-pie-chart', {
+        type: 'doughnut',
+        data: {
+          labels: pieData.map(d => d.name),
+          datasets: [{
+            data: pieData.map(d => d.value),
+            backgroundColor: pieData.map(d => d.color),
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 11 }, padding: 12 } },
+            tooltip: {
+              callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw}%` }
+            }
+          }
+        }
+      });
+    } else {
+      destroyChart('my-pie-chart');
+      const canvas = $('my-pie-chart');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // My Trend (Line)
+    const allWeeks = getAllWeeksSorted();
+    const trendDatasets = projects.map((pr, i) => {
+      const data = allWeeks.map(w => getEntry(w, currentPerson, pr));
+      const hasData = data.some(v => v > 0);
+      if (!hasData) return null;
+      return {
+        label: pr,
+        data: data,
+        borderColor: CHART_COLORS[i % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '20',
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: 3,
+        fill: false
+      };
+    }).filter(Boolean);
+
+    if (trendDatasets.length > 0) {
+      createChart('my-trend-chart', {
+        type: 'line',
+        data: {
+          labels: allWeeks,
+          datasets: trendDatasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          scales: {
+            y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
+            x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 11 }, padding: 12 } },
+            tooltip: {
+              callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
+            }
+          }
+        }
+      });
+    } else {
+      destroyChart('my-trend-chart');
+    }
+
+    // My Actual vs Forecast (Line chart with solid + dashed)
+    const forecastDatasets = [];
+    projects.forEach((pr, i) => {
+      const actualData = allWeeks.map(w => getEntry(w, currentPerson, pr));
+      const forecastData = allWeeks.map(w => getForecast(w, currentPerson, pr));
+      const hasActual = actualData.some(v => v > 0);
+      const hasForecast = forecastData.some(v => v > 0);
+      if (!hasActual && !hasForecast) return;
+      const color = CHART_COLORS[i % CHART_COLORS.length];
+      if (hasActual) {
+        forecastDatasets.push({
+          label: `${pr} (actual)`,
+          data: actualData,
+          borderColor: color,
+          backgroundColor: color + '20',
+          borderWidth: 2,
+          borderDash: [],
+          tension: 0.3,
+          pointRadius: 3,
+          fill: false
+        });
+      }
+      if (hasForecast) {
+        forecastDatasets.push({
+          label: `${pr} (forecast)`,
+          data: forecastData,
+          borderColor: color,
+          backgroundColor: color + '10',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          tension: 0.3,
+          pointRadius: 2,
+          pointStyle: 'triangle',
+          fill: false
+        });
+      }
+    });
+
+    if (forecastDatasets.length > 0) {
+      createChart('my-forecast-chart', {
+        type: 'line',
+        data: {
+          labels: allWeeks,
+          datasets: forecastDatasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          scales: {
+            y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
+            x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
+            tooltip: {
+              callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
+            }
+          }
+        }
+      });
+    } else {
+      destroyChart('my-forecast-chart');
+    }
+  }
+
+  // ─── Admin Modal ───
+  adminLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    adminModal.classList.add('active');
+    adminCodeInput.value = '';
+    adminError.style.display = 'none';
+    setTimeout(() => adminCodeInput.focus(), 100);
+  });
+
+  adminCancelBtn.addEventListener('click', () => {
+    adminModal.classList.remove('active');
+  });
+
+  adminSubmitBtn.addEventListener('click', () => checkAdminCode());
+  adminCodeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') checkAdminCode();
+  });
+
+  function checkAdminCode() {
+    if (adminCodeInput.value === 'admin') {
+      adminModal.classList.remove('active');
+      renderAdmin();
+      showScreen('admin');
+    } else {
+      adminError.style.display = 'block';
+      adminCodeInput.value = '';
+      adminCodeInput.focus();
+    }
+  }
+
+  adminBackBtn.addEventListener('click', () => {
+    if (currentPerson) {
+      renderProjectList();
+      updateTotal();
+      showScreen('app');
+    } else {
+      renderLoginScreen();
+      showScreen('login');
+    }
+  });
+
+  // ─── Admin Tabs ───
+  document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tabId = btn.getAttribute('data-tab');
+      activeAdminTab = tabId;
+      document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      $(`panel-${tabId}`).classList.add('active');
+
+      if (tabId === 'insights') {
+        renderAdminInsights();
+      }
+    });
+  });
+
+  // ─── Admin Render ───
+  function renderAdmin() {
+    renderAdminPeople();
+    renderAdminProjects();
+    renderAdminWeekSelect();
+    renderSummaryTable();
+    renderAdminInsightFilters();
+    if (activeAdminTab === 'insights') {
+      renderAdminInsights();
+    }
+  }
+
+  function renderAdminPeople() {
+    adminPeopleList.innerHTML = '';
+    (appData.people || []).forEach((name) => {
+      const item = document.createElement('div');
+      item.className = 'admin-list-item';
+      item.innerHTML = `<span>${name}</span>`;
+      const btn = document.createElement('button');
+      btn.className = 'remove-btn';
+      btn.textContent = 'Remove';
+      btn.setAttribute('data-testid', `remove-person-${name.replace(/\s+/g, '-')}`);
+      btn.addEventListener('click', async () => {
+        if (!confirm(`Remove ${name}?`)) return;
+        appData.people = appData.people.filter(p => p !== name);
+        showLoading(true);
+        try {
+          await saveFullData(appData);
+          renderAdmin();
+          showToast(`Removed ${name}`);
+        } catch (e) {
+          showToast('Failed to save changes');
+        } finally {
+          showLoading(false);
+        }
+      });
+      item.appendChild(btn);
+      adminPeopleList.appendChild(item);
+    });
+  }
+
+  function renderAdminProjects() {
+    adminProjectsList.innerHTML = '';
+    (appData.projects || []).forEach((proj) => {
+      const item = document.createElement('div');
+      item.className = 'admin-list-item';
+      item.innerHTML = `<span>${proj}</span>`;
+      const btn = document.createElement('button');
+      btn.className = 'remove-btn';
+      btn.textContent = 'Remove';
+      btn.setAttribute('data-testid', `remove-project-${proj.replace(/\s+/g, '-')}`);
+      btn.addEventListener('click', async () => {
+        if (!confirm(`Remove ${proj}?`)) return;
+        appData.projects = appData.projects.filter(p => p !== proj);
+        showLoading(true);
+        try {
+          await saveFullData(appData);
+          renderAdmin();
+          showToast(`Removed ${proj}`);
+        } catch (e) {
+          showToast('Failed to save changes');
+        } finally {
+          showLoading(false);
+        }
+      });
+      item.appendChild(btn);
+      adminProjectsList.appendChild(item);
+    });
+  }
+
+  addPersonBtn.addEventListener('click', async () => {
+    const name = addPersonInput.value.trim();
+    if (!name) return;
+    if (appData.people.includes(name)) {
+      showToast('Person already exists');
+      return;
+    }
+    appData.people.push(name);
+    addPersonInput.value = '';
+    showLoading(true);
+    try {
+      await saveFullData(appData);
+      renderAdmin();
+      showToast(`Added ${name}`);
+    } catch (e) {
+      showToast('Failed to save changes');
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  addPersonInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addPersonBtn.click();
+  });
+
+  addProjectBtn.addEventListener('click', async () => {
+    const name = addProjectInput.value.trim();
+    if (!name) return;
+    if (appData.projects.includes(name)) {
+      showToast('Project already exists');
+      return;
+    }
+    appData.projects.push(name);
+    addProjectInput.value = '';
+    showLoading(true);
+    try {
+      await saveFullData(appData);
+      renderAdmin();
+      showToast(`Added ${name}`);
+    } catch (e) {
+      showToast('Failed to save changes');
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  addProjectInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addProjectBtn.click();
+  });
+
+  function renderAdminWeekSelect() {
+    adminWeekSelect.innerHTML = '';
+    const weeks = new Set(appData.weeks || []);
+    weeks.add(getCurrentWeek());
+    const sorted = [...weeks].sort().reverse();
+    sorted.forEach((w) => {
+      const opt = document.createElement('option');
+      opt.value = w;
+      opt.textContent = `${w}  (${getWeekDateRange(w)})`;
+      adminWeekSelect.appendChild(opt);
+    });
+    adminWeekSelect.onchange = () => renderSummaryTable();
+  }
+
+  // ─── Summary Table (with Actual/Forecast) ───
+  function renderSummaryTable() {
+    const week = adminWeekSelect.value;
+    if (!week) return;
+
+    const people = appData.people || [];
+    const projects = appData.projects || [];
+
+    summaryThead.innerHTML = '';
+    const headerRow = document.createElement('tr');
+    headerRow.innerHTML = '<th></th>';
+    projects.forEach(p => {
+      const th = document.createElement('th');
+      th.textContent = p;
+      headerRow.appendChild(th);
+    });
+    const totalTh = document.createElement('th');
+    totalTh.textContent = 'Total';
+    headerRow.appendChild(totalTh);
+    summaryThead.appendChild(headerRow);
+
+    summaryTbody.innerHTML = '';
+    people.forEach(person => {
+      const tr = document.createElement('tr');
+      const nameTd = document.createElement('td');
+      nameTd.textContent = person;
+      tr.appendChild(nameTd);
+
+      let rowActualTotal = 0;
+      let rowForecastTotal = 0;
+      projects.forEach(proj => {
+        const key = `${week}|${person}|${proj}`;
+        const actual = (appData.entries || {})[key] || 0;
+        const forecast = (appData.forecasts || {})[key] || 0;
+        rowActualTotal += actual;
+        rowForecastTotal += forecast;
+        const td = document.createElement('td');
+        if (actual > 0 || forecast > 0) {
+          const aSpan = actual > 0 ? `<span class="cell-actual">${actual}</span>` : '<span style="color:var(--color-text-muted)">–</span>';
+          const fSpan = forecast > 0 ? `<span class="cell-forecast">${forecast}</span>` : '<span style="color:var(--color-text-muted)">–</span>';
+          td.innerHTML = `${aSpan}/${fSpan}`;
+          if (actual > 0 && forecast > 0) td.className = 'has-both';
+          else if (actual > 0) td.className = 'has-val';
+          else td.className = 'has-forecast';
+        }
+        tr.appendChild(td);
+      });
+
+      const totalTd = document.createElement('td');
+      const aTotal = `<span class="cell-actual">${rowActualTotal}%</span>`;
+      const fTotal = `<span class="cell-forecast">${rowForecastTotal}%</span>`;
+      totalTd.innerHTML = `${aTotal}/${fTotal}`;
+      totalTd.className = rowActualTotal > 100 ? 'over-cell' : 'total-cell';
+      tr.appendChild(totalTd);
+      summaryTbody.appendChild(tr);
+    });
+  }
+
+  // ─── Admin Insight Filters ───
+  function renderAdminInsightFilters() {
+    const weekSel = $('admin-insight-week');
+    const personSel = $('admin-insight-person');
+    const projectSel = $('admin-insight-project');
+
+    const weeks = getAllWeeksSorted().reverse();
+    weekSel.innerHTML = '';
+    weeks.forEach(w => {
+      const opt = document.createElement('option');
+      opt.value = w;
+      opt.textContent = `${w}  (${getWeekDateRange(w)})`;
+      if (w === getCurrentWeek()) opt.selected = true;
+      weekSel.appendChild(opt);
+    });
+
+    personSel.innerHTML = '<option value="all">All</option>';
+    (appData.people || []).forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      personSel.appendChild(opt);
+    });
+
+    projectSel.innerHTML = '<option value="all">All</option>';
+    (appData.projects || []).forEach(proj => {
+      const opt = document.createElement('option');
+      opt.value = proj;
+      opt.textContent = proj;
+      projectSel.appendChild(opt);
+    });
+
+    weekSel.onchange = () => renderAdminInsights();
+    personSel.onchange = () => renderAdminInsights();
+    projectSel.onchange = () => renderAdminInsights();
+  }
+
+  // ─── Admin Insights ───
+  function renderAdminInsights() {
+    if (!appData) return;
+
+    const selectedWeek = $('admin-insight-week').value || getCurrentWeek();
+    const selectedPerson = $('admin-insight-person').value || 'all';
+    const selectedProject = $('admin-insight-project').value || 'all';
+
+    const people = appData.people || [];
+    const projects = appData.projects || [];
+    const filteredPeople = selectedPerson === 'all' ? people : people.filter(p => p === selectedPerson);
+    const filteredProjects = selectedProject === 'all' ? projects : projects.filter(p => p === selectedProject);
+
+    renderAdminUtilization(selectedWeek, filteredPeople);
+    renderAdminNotLogged(selectedWeek, people);
+    renderAdminBreakdown(selectedWeek, filteredPeople, filteredProjects);
+    renderAdminPieChart(selectedWeek, filteredPeople, filteredProjects);
+    renderAdminTrend(filteredPeople, filteredProjects);
+    renderAdminAvfTrend(filteredPeople, filteredProjects);
+    renderAdminDivergence(filteredPeople, filteredProjects);
+    renderAdminAccuracy(filteredPeople, projects);
+  }
+
+  function renderAdminUtilization(week, people) {
+    const container = $('admin-utilization-content');
+    container.innerHTML = '';
+
+    people.forEach(person => {
+      const total = getPersonTotal(week, person);
+      const st = total === 100 ? 'ok' : total > 100 ? 'over' : total === 0 ? 'empty' : 'under';
+      const colors = { ok: '#0f7b6c', over: '#dc3545', under: '#f59e0b', empty: '#8b95a5' };
+      const labels = { ok: 'Balanced', over: `Over ${total - 100}%`, under: `${100 - total}% unalloc`, empty: 'No data' };
+
+      const row = document.createElement('div');
+      row.className = 'util-row';
+      row.style.borderLeft = `3px solid ${colors[st]}`;
+      row.innerHTML = `
+        <span class="util-name">${person}</span>
+        <div class="util-right">
+          <div class="util-bar-track">
+            <div class="util-bar-fill" style="width:${Math.min(total, 100)}%;background:${colors[st]}"></div>
+          </div>
+          <span class="util-pct" style="color:${colors[st]}">${total}%</span>
+          <span class="util-status" style="color:${colors[st]}">${labels[st]}</span>
+        </div>
+      `;
+      container.appendChild(row);
+    });
+
+    if (people.length === 0) {
+      container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--color-text-muted);font-size:13px;">No people to show</div>';
+    }
+  }
+
+  function renderAdminNotLogged(week, allPeople) {
+    const container = $('admin-not-logged-content');
+    const notLogged = allPeople.filter(person => getPersonTotal(week, person) === 0);
+
+    container.innerHTML = '';
+    if (notLogged.length === 0) {
+      container.innerHTML = '<div class="all-logged">Everyone has logged time this week</div>';
+    } else {
+      const list = document.createElement('div');
+      list.className = 'not-logged-list';
+      notLogged.forEach(person => {
+        const item = document.createElement('div');
+        item.className = 'not-logged-item';
+        item.textContent = person;
+        list.appendChild(item);
+      });
+      container.appendChild(list);
+    }
+  }
+
+  function renderAdminBreakdown(week, filteredPeople, filteredProjects) {
+    const barData = filteredPeople.map(person => {
+      const row = { name: person };
+      filteredProjects.forEach(pr => {
+        row[pr] = getEntry(week, person, pr);
+      });
+      return row;
+    });
+
+    if (barData.length === 0 || filteredProjects.length === 0) {
+      destroyChart('admin-breakdown-chart');
+      return;
+    }
+
+    createChart('admin-breakdown-chart', {
+      type: 'bar',
+      data: {
+        labels: barData.map(d => d.name),
+        datasets: filteredProjects.map((pr, i) => ({
+          label: pr,
+          data: barData.map(d => d[pr] || 0),
+          backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+          borderWidth: 0,
+          borderRadius: 2
+        }))
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+          x: {
+            stacked: true,
+            max: 120,
+            ticks: { callback: v => v + '%', font: { size: 10 } },
+            grid: { color: '#eef0f2' }
+          },
+          y: {
+            stacked: true,
+            ticks: { font: { size: 11 } },
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
+          }
+        }
+      }
+    });
+  }
+
+  function renderAdminPieChart(week, filteredPeople, filteredProjects) {
+    const pieData = filteredProjects.map((pr, i) => {
+      let total = 0;
+      filteredPeople.forEach(person => {
+        total += getEntry(week, person, pr);
+      });
+      return { name: pr, value: total, color: CHART_COLORS[i % CHART_COLORS.length] };
+    }).filter(d => d.value > 0);
+
+    if (pieData.length === 0) {
+      destroyChart('admin-pie-chart');
+      return;
+    }
+
+    createChart('admin-pie-chart', {
+      type: 'doughnut',
+      data: {
+        labels: pieData.map(d => d.name),
+        datasets: [{
+          data: pieData.map(d => d.value),
+          backgroundColor: pieData.map(d => d.color),
+          borderWidth: 2,
+          borderColor: '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                const pct = total > 0 ? Math.round(ctx.raw / total * 100) : 0;
+                return `${ctx.label}: ${ctx.raw}% total (${pct}% of team)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function renderAdminTrend(filteredPeople, filteredProjects) {
+    const allWeeks = getAllWeeksSorted();
+
+    if (allWeeks.length === 0 || filteredProjects.length === 0) {
+      destroyChart('admin-trend-chart');
+      return;
+    }
+
+    const datasets = filteredProjects.map((pr, i) => {
+      const data = allWeeks.map(w => {
+        let total = 0;
+        filteredPeople.forEach(person => {
+          total += getEntry(w, person, pr);
+        });
+        return filteredPeople.length > 0 ? Math.round(total / filteredPeople.length) : 0;
+      });
+      const hasData = data.some(v => v > 0);
+      if (!hasData) return null;
+      return {
+        label: pr,
+        data: data,
+        borderColor: CHART_COLORS[i % CHART_COLORS.length],
+        backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '20',
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: 3,
+        fill: false
+      };
+    }).filter(Boolean);
+
+    if (datasets.length === 0) {
+      destroyChart('admin-trend-chart');
+      return;
+    }
+
+    createChart('admin-trend-chart', {
+      type: 'line',
+      data: {
+        labels: allWeeks,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
+          x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+        },
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 11 }, padding: 12 } },
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
+          }
+        }
+      }
+    });
+  }
+
+  // ─── Actual vs Forecast Trend (new) ───
+  function renderAdminAvfTrend(filteredPeople, filteredProjects) {
+    const allWeeks = getAllWeeksSorted();
+
+    if (allWeeks.length === 0 || filteredProjects.length === 0) {
+      destroyChart('admin-avf-trend-chart');
+      return;
+    }
+
+    const datasets = [];
+    filteredProjects.forEach((pr, i) => {
+      const color = CHART_COLORS[i % CHART_COLORS.length];
+
+      // Actual line (solid)
+      const actualData = allWeeks.map(w => {
+        let total = 0;
+        filteredPeople.forEach(person => { total += getEntry(w, person, pr); });
+        return filteredPeople.length > 0 ? Math.round(total / filteredPeople.length) : 0;
+      });
+
+      // Forecast line (dashed)
+      const forecastData = allWeeks.map(w => {
+        let total = 0;
+        filteredPeople.forEach(person => { total += getForecast(w, person, pr); });
+        return filteredPeople.length > 0 ? Math.round(total / filteredPeople.length) : 0;
+      });
+
+      const hasActual = actualData.some(v => v > 0);
+      const hasForecast = forecastData.some(v => v > 0);
+
+      if (hasActual) {
+        datasets.push({
+          label: `${pr} (actual)`,
+          data: actualData,
+          borderColor: color,
+          backgroundColor: color + '20',
+          borderWidth: 2,
+          borderDash: [],
+          tension: 0.3,
+          pointRadius: 3,
+          fill: false
+        });
+      }
+      if (hasForecast) {
+        datasets.push({
+          label: `${pr} (forecast)`,
+          data: forecastData,
+          borderColor: color,
+          backgroundColor: color + '10',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          tension: 0.3,
+          pointRadius: 2,
+          pointStyle: 'triangle',
+          fill: false
+        });
+      }
+    });
+
+    if (datasets.length === 0) {
+      destroyChart('admin-avf-trend-chart');
+      return;
+    }
+
+    createChart('admin-avf-trend-chart', {
+      type: 'line',
+      data: {
+        labels: allWeeks,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+          y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#eef0f2' } },
+          x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+        },
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
+          }
+        }
+      }
+    });
+  }
+
+  // ─── Forecast Divergence (bar chart) ───
+  function renderAdminDivergence(filteredPeople, filteredProjects) {
+    const allWeeks = getAllWeeksSorted();
+
+    if (allWeeks.length === 0 || filteredProjects.length === 0) {
+      destroyChart('admin-divergence-chart');
+      return;
+    }
+
+    // Build divergence data: for each week, each project = avg(forecast - actual) across people
+    const datasets = filteredProjects.map((pr, i) => {
+      const data = allWeeks.map(w => {
+        let totalDiv = 0, count = 0;
+        filteredPeople.forEach(person => {
+          const a = getEntry(w, person, pr);
+          const f = getForecast(w, person, pr);
+          if (a > 0 || f > 0) {
+            totalDiv += (f - a);
+            count++;
+          }
+        });
+        return count > 0 ? Math.round(totalDiv / count) : 0;
+      });
+      const hasData = data.some(v => v !== 0);
+      if (!hasData) return null;
+      return {
+        label: pr,
+        data: data,
+        backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + 'AA',
+        borderColor: CHART_COLORS[i % CHART_COLORS.length],
+        borderWidth: 1,
+        borderRadius: 2
+      };
+    }).filter(Boolean);
+
+    if (datasets.length === 0) {
+      destroyChart('admin-divergence-chart');
+      return;
+    }
+
+    createChart('admin-divergence-chart', {
+      type: 'bar',
+      data: {
+        labels: allWeeks,
+        datasets: datasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+          y: {
+            ticks: { callback: v => (v > 0 ? '+' : '') + v + '%', font: { size: 11 } },
+            grid: { color: (ctx) => ctx.tick.value === 0 ? '#1a1d21' : '#eef0f2' }
+          },
+          x: { ticks: { font: { size: 10 } }, grid: { display: false } }
+        },
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const v = ctx.raw;
+                const sign = v > 0 ? '+' : '';
+                const desc = v > 0 ? '(overestimated)' : v < 0 ? '(underestimated)' : '(on target)';
+                return `${ctx.dataset.label}: ${sign}${v}% ${desc}`;
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ─── Estimation Accuracy by Person (card list) ───
+  function renderAdminAccuracy(filteredPeople, allProjects) {
+    const container = $('admin-accuracy-content');
+    container.innerHTML = '';
+
+    const allWeeks = getAllWeeksSorted();
+
+    const accuracyData = filteredPeople.map(person => {
+      let totalAbsErr = 0, totalEntries = 0, overCount = 0, underCount = 0, accurateCount = 0;
+      allWeeks.forEach(w => {
+        allProjects.forEach(pr => {
+          const a = getEntry(w, person, pr);
+          const f = getForecast(w, person, pr);
+          if (a > 0 || f > 0) {
+            const diff = f - a;
+            totalAbsErr += Math.abs(diff);
+            totalEntries++;
+            if (diff > 5) overCount++;
+            else if (diff < -5) underCount++;
+            else accurateCount++;
+          }
+        });
+      });
+      return {
+        name: person,
+        avgErr: totalEntries > 0 ? Math.round(totalAbsErr / totalEntries) : 0,
+        accuracy: totalEntries > 0 ? Math.round((accurateCount / totalEntries) * 100) : 0,
+        overCount,
+        underCount,
+        accurateCount,
+        totalEntries
+      };
+    });
+
+    if (accuracyData.length === 0 || accuracyData.every(d => d.totalEntries === 0)) {
+      container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--color-text-muted);font-size:13px;">No forecast data yet</div>';
+      return;
+    }
+
+    accuracyData.forEach(d => {
+      const color = d.accuracy >= 70 ? '#0f7b6c' : d.accuracy >= 40 ? '#f59e0b' : '#dc3545';
+      const bgColor = d.accuracy >= 70 ? '#e6f5f2' : d.accuracy >= 40 ? '#fef9e7' : '#fff0f0';
+
+      const card = document.createElement('div');
+      card.className = 'accuracy-card';
+      card.innerHTML = `
+        <div class="accuracy-border" style="background:${color}"></div>
+        <div class="accuracy-body">
+          <div class="accuracy-top">
+            <span class="accuracy-name">${d.name}</span>
+            <span class="accuracy-pct" style="color:${color}">${d.accuracy}% accurate</span>
+          </div>
+          <div class="accuracy-bar-track">
+            <div class="accuracy-bar-fill" style="width:${d.accuracy}%;background:${color}"></div>
+          </div>
+          <div class="accuracy-stats">
+            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#8b95a5"></span>Avg err: ${d.avgErr}%</span>
+            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#0f7b6c"></span>On target: ${d.accurateCount}</span>
+            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#f59e0b"></span>Over: ${d.overCount}</span>
+            <span class="accuracy-stat"><span class="accuracy-dot" style="background:#dc3545"></span>Under: ${d.underCount}</span>
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  // ─── Start App ───
+  init();
+
+})();
+</script>
+</body>
+</html>
