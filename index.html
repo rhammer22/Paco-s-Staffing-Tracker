@@ -1355,6 +1355,110 @@
     animation: spin-logo 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
+  /* Matrix rain */
+  @keyframes matrix-fall {
+    0% { transform: translateY(-10vh); opacity: 1; }
+    80% { opacity: 1; }
+    100% { transform: translateY(110vh); opacity: 0; }
+  }
+
+  .matrix-char {
+    position: fixed;
+    top: -20px;
+    z-index: 9999;
+    pointer-events: none;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    color: #00ff41;
+    text-shadow: 0 0 8px #00ff41, 0 0 16px #00ff41;
+  }
+
+  /* Total flip */
+  @keyframes total-flip {
+    0% { transform: perspective(400px) rotateX(0deg); }
+    50% { transform: perspective(400px) rotateX(180deg); }
+    100% { transform: perspective(400px) rotateX(360deg); }
+  }
+
+  .total-value.flipping {
+    animation: total-flip 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Credits overlay */
+  .credits-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    cursor: pointer;
+  }
+
+  .credits-overlay.active { display: flex; }
+
+  @keyframes credits-scroll {
+    0% { transform: translateY(100vh); }
+    100% { transform: translateY(-100%); }
+  }
+
+  .credits-content {
+    text-align: center;
+    color: white;
+    font-size: 16px;
+    line-height: 2.2;
+    animation: credits-scroll 12s linear forwards;
+  }
+
+  .credits-content .credits-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    letter-spacing: -0.02em;
+  }
+
+  .credits-content .credits-role {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #9ca3af;
+    margin-top: 16px;
+  }
+
+  .credits-content .credits-name {
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  .credits-content .credits-small {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 30px;
+  }
+
+  /* Rainbow mode */
+  @keyframes rainbow-cycle {
+    0%   { filter: hue-rotate(0deg); }
+    100% { filter: hue-rotate(360deg); }
+  }
+
+  body.rainbow-mode {
+    animation: rainbow-cycle 3s linear infinite;
+  }
+
+  /* Over 9000 shake */
+  @keyframes over9k-shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+    20%, 40%, 60%, 80% { transform: translateX(4px); }
+  }
+
+  .over9k-shake {
+    animation: over9k-shake 0.5s ease;
+  }
+
   /* ─── Responsive ─── */
   @media (max-width: 480px) {
     .login-card { padding: 32px 24px; }
@@ -1742,6 +1846,30 @@
 
 <!-- ─── Toast ─── -->
 <div id="toast" class="toast" data-testid="toast"></div>
+
+<!-- Credits Easter Egg -->
+<div class="credits-overlay" id="credits-overlay">
+  <div class="credits-content">
+    <div class="credits-title">Paco's Staffing Tracker</div>
+    <div class="credits-role">Executive Producer</div>
+    <div class="credits-name">Francisco "Paco" Ramirez</div>
+    <div class="credits-role">Lead Developer</div>
+    <div class="credits-name">Perplexity Computer</div>
+    <div class="credits-role">Product Visionary</div>
+    <div class="credits-name">Reed Hammer</div>
+    <div class="credits-role">Starring</div>
+    <div class="credits-name">Chris Gauch</div>
+    <div class="credits-name">Chris Chu</div>
+    <div class="credits-name">Katie Zhu</div>
+    <div class="credits-name">Landon Lichtenstein</div>
+    <div class="credits-role">Catering</div>
+    <div class="credits-name">🌮🌮🌮</div>
+    <div class="credits-role">Special Thanks</div>
+    <div class="credits-name">Coffee</div>
+    <div class="credits-small">No hours were harmed in the making of this tracker</div>
+    <div class="credits-small" style="margin-top:8px">© 2026 Tishman Speyer</div>
+  </div>
+</div>
 
 <!-- ─── Loading ─── -->
 <div id="loading" class="loading-overlay">
@@ -3984,6 +4112,124 @@
   }
 
   // Dark mode is session-only — resets on reload
+
+  // 6) Matrix rain — type "matrix" in either password field
+  function launchMatrixRain() {
+    const chars = 'アイウエオカキクケコサシスセソタチツテト0123456789ABCDEF';
+    for (let i = 0; i < 50; i++) {
+      const el = document.createElement('div');
+      el.className = 'matrix-char';
+      el.textContent = chars[Math.floor(Math.random() * chars.length)];
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.fontSize = (Math.random() * 14 + 10) + 'px';
+      el.style.animation = `matrix-fall ${Math.random() * 2 + 1.5}s linear ${Math.random() * 1}s forwards`;
+      document.body.appendChild(el);
+      // Change character mid-fall
+      const interval = setInterval(() => {
+        el.textContent = chars[Math.floor(Math.random() * chars.length)];
+      }, 100);
+      el.addEventListener('animationend', () => { clearInterval(interval); el.remove(); });
+    }
+  }
+
+  // Hook matrix into both password fields
+  [adminCodeInput, pacoCodeInput].forEach(input => {
+    input.addEventListener('input', () => {
+      const val = input.value.toLowerCase().trim();
+      if (val === 'matrix') {
+        launchMatrixRain();
+        showEEToast('\u{1F576}\uFE0F Wake up, Neo...');
+        input.value = '';
+      }
+    });
+  });
+
+  // 7) Tap the total percentage 10 times → flip animation
+  let totalTapCount = 0;
+  let totalTapTimer = null;
+  totalActual.style.cursor = 'default';
+  totalActual.addEventListener('click', () => {
+    totalTapCount++;
+    clearTimeout(totalTapTimer);
+    totalTapTimer = setTimeout(() => { totalTapCount = 0; }, 3000);
+    if (totalTapCount === 10) {
+      totalTapCount = 0;
+      totalActual.classList.add('flipping');
+      setTimeout(() => totalActual.classList.remove('flipping'), 800);
+      showEEToast('\u{1F3B0} You spin me right round!');
+    }
+  });
+
+  // 8) Credits — click "Created with Perplexity Computer" footer 7 times
+  const creditsOverlay = $('credits-overlay');
+  let footerClickCount = 0;
+  let footerClickTimer = null;
+  document.querySelectorAll('.app-footer a').forEach(link => {
+    link.addEventListener('click', (e) => {
+      footerClickCount++;
+      clearTimeout(footerClickTimer);
+      footerClickTimer = setTimeout(() => { footerClickCount = 0; }, 4000);
+      if (footerClickCount >= 7) {
+        e.preventDefault();
+        footerClickCount = 0;
+        creditsOverlay.classList.add('active');
+        // Reset animation
+        const content = creditsOverlay.querySelector('.credits-content');
+        content.style.animation = 'none';
+        void content.offsetWidth;
+        content.style.animation = '';
+      }
+    });
+  });
+  creditsOverlay.addEventListener('click', () => {
+    creditsOverlay.classList.remove('active');
+  });
+
+  // 9) Over 9000 — type a value > 9000 in any percentage input
+  document.addEventListener('input', (e) => {
+    if (e.target.classList.contains('pct-input') || e.target.classList.contains('actual-input') || e.target.classList.contains('forecast-input')) {
+      const val = parseInt(e.target.value) || 0;
+      if (val > 9000) {
+        e.target.closest('.project-row')?.classList.add('over9k-shake');
+        setTimeout(() => e.target.closest('.project-row')?.classList.remove('over9k-shake'), 500);
+        showEEToast('\u{1F4A5} IT\'S OVER 9000!!!');
+      }
+    }
+  });
+
+  // 10) Rainbow mode — type "rainbow" in either password field
+  [adminCodeInput, pacoCodeInput].forEach(input => {
+    input.addEventListener('input', () => {
+      const val = input.value.toLowerCase().trim();
+      if (val === 'rainbow') {
+        document.body.classList.toggle('rainbow-mode');
+        const isRainbow = document.body.classList.contains('rainbow-mode');
+        showEEToast(isRainbow ? '\u{1F308} Rainbow mode!' : '\u{1F308} Rainbow off');
+        input.value = '';
+      }
+    });
+  });
+
+  // 11) Long-press any project name for 3 seconds → gravity drop on numbers
+  let longPressTimer = null;
+  document.addEventListener('pointerdown', (e) => {
+    const projName = e.target.closest('.project-name');
+    if (!projName) return;
+    longPressTimer = setTimeout(() => {
+      // Find all pct-inputs on screen and make them "fall"
+      document.querySelectorAll('.pct-input, .actual-input, .forecast-input').forEach((inp, i) => {
+        inp.style.transition = 'transform 0.6s cubic-bezier(0.55, 0, 1, 0.45)';
+        inp.style.transform = 'translateY(200px) rotate(' + (Math.random() * 40 - 20) + 'deg)';
+        setTimeout(() => {
+          inp.style.transition = 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)';
+          inp.style.transform = '';
+        }, 800 + i * 50);
+      });
+      showEEToast('\u{1F30D} Gravity check!');
+    }, 3000);
+  });
+  document.addEventListener('pointerup', () => clearTimeout(longPressTimer));
+  document.addEventListener('pointercancel', () => clearTimeout(longPressTimer));
 
   // ─── Start App ───
   init();
