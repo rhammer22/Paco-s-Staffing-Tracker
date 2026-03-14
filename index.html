@@ -1261,6 +1261,100 @@
     flex-shrink: 0;
   }
 
+  /* ─── Easter Egg Styles ─── */
+  @keyframes confetti-fall {
+    0% { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+  }
+
+  .confetti-piece {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    top: -10px;
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  @keyframes taco-fall {
+    0% { transform: translateY(-10vh) rotate(0deg) scale(1); opacity: 1; }
+    50% { transform: translateY(50vh) rotate(360deg) scale(1.2); opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg) scale(0.8); opacity: 0; }
+  }
+
+  .taco-piece {
+    position: fixed;
+    top: -40px;
+    z-index: 9999;
+    pointer-events: none;
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  .login-logo.wink svg circle:nth-child(2) {
+    animation: wink-left 0.3s ease;
+  }
+
+  @keyframes wink-left {
+    0%, 100% { r: 1; }
+    50% { r: 0.2; cy: 10.5; }
+  }
+
+  .ee-toast {
+    position: fixed;
+    bottom: 120px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: linear-gradient(135deg, #7c3aed, #db2777);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 9999;
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.3);
+  }
+
+  .ee-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  body.dark-mode {
+    --color-bg: #111827;
+    --color-surface: #1f2937;
+    --color-border: #374151;
+    --color-border-light: #2d3748;
+    --color-text: #f3f4f6;
+    --color-text-secondary: #9ca3af;
+    --color-text-muted: #6b7280;
+    --color-accent-light: #1e293b;
+    --color-danger-bg: #1c1917;
+    --color-success-bg: #0a2e1f;
+    --color-forecast-light: #1e1b4b;
+  }
+
+  body.dark-mode .save-btn { background: #6366f1; }
+  body.dark-mode .save-btn:hover { background: #4f46e5; }
+  body.dark-mode .save-btn.saved { background: #059669; }
+  body.dark-mode .modal-card { background: #1f2937; }
+  body.dark-mode .login-card { background: #1f2937; }
+  body.dark-mode .person-btn { background: #111827; border-color: #374151; color: #f3f4f6; }
+  body.dark-mode .person-btn:hover { background: #1e293b; border-color: #6366f1; color: #818cf8; }
+
+  @keyframes spin-logo {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .login-logo.spinning {
+    animation: spin-logo 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
   /* ─── Responsive ─── */
   @media (max-width: 480px) {
     .login-card { padding: 32px 24px; }
@@ -2214,6 +2308,23 @@
       setSaveBtnsState('Saved ✓', 'saved', true);
       showToast('Hours saved successfully');
 
+      // Easter egg: confetti on perfect 100%
+      const savedActualTotal = parseInt(totalActual.textContent) || 0;
+      if (savedActualTotal === 100) {
+        setTimeout(() => {
+          if (typeof launchConfetti === 'function') launchConfetti(40);
+          if (typeof showEEToast === 'function') showEEToast('\uD83C\uDFAF Perfect 100%!');
+        }, 300);
+      }
+
+      // Easter egg: Friday afternoon weekend message
+      const saveNow = new Date();
+      if (saveNow.getDay() === 5 && saveNow.getHours() >= 16) {
+        setTimeout(() => {
+          if (typeof showEEToast === 'function') showEEToast('\uD83C\uDF1F Have a great weekend!');
+        }, 2500);
+      }
+
       setTimeout(() => {
         setSaveBtnsState('Save', null, false);
       }, 2000);
@@ -2509,6 +2620,14 @@
 
   function checkAdminCode() {
     const code = adminCodeInput.value.toLowerCase().trim();
+    // Easter egg: taco rain
+    if (code === 'taco') {
+      if (typeof launchTacoRain === 'function') launchTacoRain();
+      if (typeof showEEToast === 'function') showEEToast('\uD83C\uDF2E It\'s Paco, not Taco!');
+      adminCodeInput.value = '';
+      adminCodeInput.focus();
+      return;
+    }
     if (code === 'admin' || code === 'paco') {
       adminModal.classList.remove('active');
       renderAdmin();
@@ -2550,6 +2669,14 @@
 
   function checkPacoCode() {
     const code = pacoCodeInput.value.toLowerCase().trim();
+    // Easter egg: taco rain
+    if (code === 'taco') {
+      if (typeof launchTacoRain === 'function') launchTacoRain();
+      if (typeof showEEToast === 'function') showEEToast('\uD83C\uDF2E Close, but it\'s Paco!');
+      pacoCodeInput.value = '';
+      pacoCodeInput.focus();
+      return;
+    }
     if (code === 'paco') {
       pacoModal.classList.remove('active');
       renderAdmin();
@@ -3743,6 +3870,120 @@
       container.appendChild(card);
     });
   }
+
+  // ─── Easter Eggs ───
+  const eeToast = document.createElement('div');
+  eeToast.className = 'ee-toast';
+  document.body.appendChild(eeToast);
+
+  function showEEToast(msg, duration = 3000) {
+    eeToast.textContent = msg;
+    eeToast.classList.add('show');
+    setTimeout(() => eeToast.classList.remove('show'), duration);
+  }
+
+  // 1) Confetti burst (used by multiple eggs)
+  function launchConfetti(count = 60) {
+    const colors = ['#dc2626','#059669','#d97706','#7c3aed','#db2777','#0891b2','#1e3a5f','#ea580c','#6366f1','#65a30d'];
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      piece.style.left = Math.random() * 100 + 'vw';
+      piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+      piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+      piece.style.width = (Math.random() * 8 + 6) + 'px';
+      piece.style.height = (Math.random() * 8 + 6) + 'px';
+      piece.style.animation = `confetti-fall ${Math.random() * 2 + 1.5}s ease-out ${Math.random() * 0.5}s forwards`;
+      document.body.appendChild(piece);
+      piece.addEventListener('animationend', () => piece.remove());
+    }
+  }
+
+  // 2) Taco rain (Paco → Taco)
+  function launchTacoRain() {
+    const emojis = ['🌮','🌶️','🥑','🌮','🌯','🌮'];
+    for (let i = 0; i < 30; i++) {
+      const taco = document.createElement('div');
+      taco.className = 'taco-piece';
+      taco.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      taco.style.left = Math.random() * 100 + 'vw';
+      taco.style.fontSize = (Math.random() * 20 + 20) + 'px';
+      taco.style.animation = `taco-fall ${Math.random() * 2 + 2}s ease-in ${Math.random() * 0.8}s forwards`;
+      document.body.appendChild(taco);
+      taco.addEventListener('animationend', () => taco.remove());
+    }
+  }
+
+  // 3) Konami Code → party mode with confetti
+  const konamiSequence = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  let konamiIndex = 0;
+  document.addEventListener('keydown', (e) => {
+    if (e.key === konamiSequence[konamiIndex] || e.key.toLowerCase() === konamiSequence[konamiIndex]) {
+      konamiIndex++;
+      if (konamiIndex === konamiSequence.length) {
+        konamiIndex = 0;
+        launchConfetti(100);
+        showEEToast('🎉 Party mode activated!');
+      }
+    } else {
+      konamiIndex = 0;
+    }
+  });
+
+  // 4) Click the login logo 5 times → wink + secret message
+  let logoClickCount = 0;
+  let logoClickTimer = null;
+  const loginLogo = document.querySelector('.login-logo');
+  if (loginLogo) {
+    loginLogo.style.cursor = 'pointer';
+    loginLogo.addEventListener('click', () => {
+      logoClickCount++;
+      clearTimeout(logoClickTimer);
+      logoClickTimer = setTimeout(() => { logoClickCount = 0; }, 2000);
+
+      // Spin on every click
+      loginLogo.classList.remove('spinning');
+      void loginLogo.offsetWidth;
+      loginLogo.classList.add('spinning');
+
+      if (logoClickCount === 5) {
+        logoClickCount = 0;
+        loginLogo.classList.add('wink');
+        setTimeout(() => loginLogo.classList.remove('wink'), 600);
+        const messages = [
+          'Built with \u2764\uFE0F by Perplexity Computer',
+          'Hey! That tickles!',
+          'You found a secret \u2728',
+          'Paco\'s Tracker says hello!',
+          'Go log your hours! \uD83D\uDE04'
+        ];
+        showEEToast(messages[Math.floor(Math.random() * messages.length)]);
+      }
+    });
+  }
+
+  // 5) Triple-click header title → dark mode toggle
+  let tripleClickTimer = null;
+  let tripleClickCount = 0;
+  const loginTitle = document.querySelector('.login-title');
+  if (loginTitle) {
+    loginTitle.style.cursor = 'default';
+    loginTitle.addEventListener('click', () => {
+      tripleClickCount++;
+      clearTimeout(tripleClickTimer);
+      tripleClickTimer = setTimeout(() => { tripleClickCount = 0; }, 500);
+
+      if (tripleClickCount === 3) {
+        tripleClickCount = 0;
+        document.body.classList.toggle('dark-mode');
+        const isDark = document.body.classList.contains('dark-mode');
+        showEEToast(isDark ? '\uD83C\uDF19 Dark mode on' : '\u2600\uFE0F Light mode on');
+        // Dark mode resets on page reload (no persistent storage needed)
+      }
+    });
+  }
+
+  // Dark mode is session-only — resets on reload
 
   // ─── Start App ───
   init();
