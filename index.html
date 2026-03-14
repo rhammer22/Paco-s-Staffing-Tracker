@@ -3220,15 +3220,36 @@
     const isAllWeeks = week === 'all';
     const allW = isAllWeeks ? getAllWeeksSorted() : null;
     const barData = filteredPeople.map(person => {
-      const row = { name: person };
+      const row = { name: person, _raw: {} };
+      let total = 0;
       filteredProjects.forEach(pr => {
+        let val;
         if (isAllWeeks) {
           const vals = allW.map(w => getEntry(w, person, pr)).filter(v => v > 0);
-          row[pr] = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / allW.length) : 0;
+          val = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / allW.length : 0;
         } else {
-          row[pr] = getEntry(week, person, pr);
+          val = getEntry(week, person, pr);
         }
+        row._raw[pr] = Math.round(val);
+        total += val;
       });
+      row._total = total;
+      // Normalize to 100% with rounding correction
+      if (total > 0) {
+        let sum = 0;
+        const active = filteredProjects.filter(pr => row._raw[pr] > 0);
+        active.forEach((pr, i) => {
+          if (i === active.length - 1) {
+            row[pr] = 100 - sum; // last one gets the remainder
+          } else {
+            row[pr] = Math.round(row._raw[pr] / total * 100);
+            sum += row[pr];
+          }
+        });
+        filteredProjects.filter(pr => row._raw[pr] === 0).forEach(pr => { row[pr] = 0; });
+      } else {
+        filteredProjects.forEach(pr => { row[pr] = 0; });
+      }
       return row;
     });
 
@@ -3238,7 +3259,7 @@
     }
 
     const activeProjects = filteredProjects.filter(pr =>
-      barData.some(d => (d[pr] || 0) > 0)
+      barData.some(d => (d._raw[pr] || 0) > 0)
     );
     const allNames = filteredPeople;
     const labels = barData.map(d => shortName(d.name, allNames));
@@ -3267,15 +3288,21 @@
           },
           y: {
             stacked: true,
+            max: 100,
             ticks: { callback: v => v + '%', font: { size: 10 } },
-            grid: { color: '#e5e7eb' },
-            suggestedMax: 100
+            grid: { color: '#e5e7eb' }
           }
         },
         plugins: {
           legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
           tooltip: {
-            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
+            callbacks: {
+              label: (ctx) => {
+                const d = barData[ctx.dataIndex];
+                const pr = activeProjects[ctx.datasetIndex];
+                return `${pr}: ${ctx.raw}% of time (${d._raw[pr]}% actual)`;
+              }
+            }
           }
         }
       }
@@ -3337,24 +3364,43 @@
     const isAllWeeks = week === 'all';
     const allW = isAllWeeks ? getAllWeeksSorted() : null;
 
-    // Build data: for each project, how much each person contributes
+    // Build raw data: for each project, each person's raw %
     const projectData = filteredProjects.map(pr => {
-      const row = { name: pr };
+      const row = { name: pr, _raw: {} };
+      let total = 0;
       filteredPeople.forEach(person => {
+        let val;
         if (isAllWeeks) {
           const vals = allW.map(w => getEntry(w, person, pr)).filter(v => v > 0);
-          row[person] = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / allW.length) : 0;
+          val = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / allW.length : 0;
         } else {
-          row[person] = getEntry(week, person, pr);
+          val = getEntry(week, person, pr);
         }
+        row._raw[person] = Math.round(val);
+        total += val;
       });
+      row._total = total;
+      // Normalize to 100% with rounding correction
+      if (total > 0) {
+        let sum = 0;
+        const activePpl = filteredPeople.filter(p => row._raw[p] > 0);
+        activePpl.forEach((p, i) => {
+          if (i === activePpl.length - 1) {
+            row[p] = 100 - sum;
+          } else {
+            row[p] = Math.round(row._raw[p] / total * 100);
+            sum += row[p];
+          }
+        });
+        filteredPeople.filter(p => row._raw[p] === 0).forEach(p => { row[p] = 0; });
+      } else {
+        filteredPeople.forEach(p => { row[p] = 0; });
+      }
       return row;
     });
 
     // Only show projects that have at least one person with time > 0
-    const activeData = projectData.filter(d =>
-      filteredPeople.some(person => (d[person] || 0) > 0)
-    );
+    const activeData = projectData.filter(d => d._total > 0);
 
     if (activeData.length === 0 || filteredPeople.length === 0) {
       destroyChart('admin-project-staffing-chart');
@@ -3362,7 +3408,6 @@
     }
 
     const allNames = filteredPeople;
-    // Person colors stay consistent
     const personColors = filteredPeople.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
 
     createChart('admin-project-staffing-chart', {
@@ -3389,6 +3434,7 @@
           },
           y: {
             stacked: true,
+            max: 100,
             ticks: { callback: v => v + '%', font: { size: 10 } },
             grid: { color: '#e5e7eb' }
           }
@@ -3396,7 +3442,14 @@
         plugins: {
           legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
           tooltip: {
-            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
+            callbacks: {
+              label: (ctx) => {
+                const d = activeData[ctx.dataIndex];
+                const person = filteredPeople[ctx.datasetIndex];
+                const pName = shortName(person, allNames);
+                return `${pName}: ${ctx.raw}% of project (${d._raw[person]}% actual)`;
+              }
+            }
           }
         }
       }
