@@ -1372,37 +1372,27 @@
 
   .entry-header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 16px;
+    align-items: stretch;
+    justify-content: center;
+    padding: 12px 16px;
     border-bottom: 1px solid var(--color-border-light);
-  }
-
-  .entry-header-title {
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--color-text);
-  }
-
-  .entry-header-sub {
-    font-size: 12px;
-    color: var(--color-text-secondary);
-    margin-top: 2px;
   }
 
   .entry-totals {
     display: flex;
     gap: 8px;
+    width: 100%;
   }
 
   .entry-total-pill {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 6px 12px;
+    justify-content: center;
+    padding: 10px 12px;
     background: var(--color-bg);
     border-radius: var(--radius-sm);
-    min-width: 64px;
+    flex: 1;
   }
 
   .entry-total-pill.forecast-pill {
@@ -1432,9 +1422,21 @@
   .entry-total-value.forecast-over { color: var(--color-danger); }
   .entry-total-value.forecast-perfect { color: var(--color-forecast); }
 
+  .entry-total-week {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    margin-top: 2px;
+    font-weight: 400;
+  }
+
+  .forecast-pill .entry-total-week {
+    color: var(--color-forecast);
+    opacity: 0.7;
+  }
+
   .entry-table-header {
     display: grid;
-    grid-template-columns: 1fr 72px 72px;
+    grid-template-columns: 1fr 80px 80px;
     padding: 8px 16px;
     background: var(--color-bg);
     border-bottom: 1px solid var(--color-border-light);
@@ -1443,6 +1445,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-muted);
+    line-height: 1.3;
   }
 
   .entry-col-actual, .entry-col-forecast {
@@ -1451,7 +1454,7 @@
 
   .entry-row {
     display: grid;
-    grid-template-columns: 1fr 72px 72px;
+    grid-template-columns: 1fr 80px 80px;
     align-items: center;
     padding: 6px 16px;
     border-bottom: 1px solid var(--color-border-light);
@@ -1963,24 +1966,22 @@
 
   <div class="entry-card">
     <div class="entry-header">
-      <div class="entry-header-left">
-        <div class="entry-header-title">This Week</div>
-        <div class="entry-header-sub" id="entry-week-label"></div>
-      </div>
       <div class="entry-totals">
         <div class="entry-total-pill">
           <span class="entry-total-label">Actual</span>
           <span class="entry-total-value" id="total-actual" data-testid="total-actual">0%</span>
+          <span class="entry-total-week" id="actual-week-label"></span>
         </div>
         <div class="entry-total-pill forecast-pill">
           <span class="entry-total-label">Forecast</span>
           <span class="entry-total-value" id="total-forecast" data-testid="total-forecast">0%</span>
+          <span class="entry-total-week" id="forecast-week-label"></span>
         </div>
       </div>
     </div>
     <div class="entry-table-header">
       <span class="entry-col-project">Project</span>
-      <span class="entry-col-actual">Actual</span>
+      <span class="entry-col-actual" id="entry-actual-col-label">Actual</span>
       <span class="entry-col-forecast" id="entry-forecast-col-label">Forecast</span>
     </div>
     <div id="combined-project-list" class="entry-table-body"></div>
@@ -2399,7 +2400,9 @@
   const totalActual = $('total-actual');
   const totalForecast = $('total-forecast');
   const combinedProjectList = $('combined-project-list');
-  const entryWeekLabel = $('entry-week-label');
+  const actualWeekLabel = $('actual-week-label');
+  const forecastWeekLabel = $('forecast-week-label');
+  const entryActualColLabel = $('entry-actual-col-label');
   const entryForecastColLabel = $('entry-forecast-col-label');
   const saveBtn = $('save-btn');
   const saveWarningModal = $('save-warning-modal');
@@ -3103,9 +3106,13 @@
     const forecasts = appData.forecasts || {};
     const nextWeek = getNextWeek(currentWeek);
 
-    // Update header labels
-    if (entryWeekLabel) entryWeekLabel.textContent = getWeekDateRange(currentWeek);
-    if (entryForecastColLabel) entryForecastColLabel.textContent = 'Forecast';
+    // Update header labels with specific week dates
+    const actualRange = getWeekDateRange(currentWeek);
+    const forecastRange = getWeekDateRange(nextWeek);
+    if (actualWeekLabel) actualWeekLabel.textContent = actualRange;
+    if (forecastWeekLabel) forecastWeekLabel.textContent = forecastRange;
+    if (entryActualColLabel) entryActualColLabel.innerHTML = `Actual<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;opacity:0.7">${actualRange}</span>`;
+    if (entryForecastColLabel) entryForecastColLabel.innerHTML = `Forecast<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;opacity:0.7">${forecastRange}</span>`;
 
     projects.forEach((proj) => {
       const actualKey = `${currentWeek}|${currentPerson}|${proj}`;
