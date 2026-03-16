@@ -1103,45 +1103,73 @@
     gap: 4px;
   }
 
-  .notable-changes-list {
+  .insights-list {
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 2px;
   }
 
-  .notable-change-row {
+  .insight-row {
     display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    padding: 8px 12px;
-    font-size: 13px;
-    line-height: 1.5;
-    color: var(--color-text);
+    gap: 10px;
+    padding: 10px 12px;
     border-radius: var(--radius-sm);
+    transition: background var(--transition);
   }
 
-  .notable-change-row:nth-child(odd) {
+  .insight-row:nth-child(odd) {
     background: var(--color-bg);
   }
 
-  .notable-change-row:nth-child(even) {
-    background: transparent;
+  .insight-row:hover {
+    background: var(--color-accent-light);
   }
 
-  .notable-change-icon {
+  .insight-icon {
     flex-shrink: 0;
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 16px;
+    line-height: 1.4;
+    margin-top: 1px;
   }
 
-  .notable-change-text {
+  .insight-body {
     flex: 1;
+    min-width: 0;
   }
 
-  .notable-changes-empty {
+  .insight-person {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+  }
+
+  .insight-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+    line-height: 1.4;
+  }
+
+  .insight-detail {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin-top: 2px;
+  }
+
+  .insight-question {
+    font-size: 12px;
+    color: var(--color-forecast);
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  .insights-empty {
     font-size: 13px;
     color: var(--color-text-muted);
-    padding: 12px;
+    padding: 16px 12px;
     text-align: center;
   }
 
@@ -1826,10 +1854,10 @@
         <canvas id="my-trend-chart" data-testid="my-trend-chart"></canvas>
       </div>
     </div>
-    <!-- My Notable Changes -->
+    <!-- My Insights -->
     <div class="insight-card" data-testid="my-notable-changes-card">
-      <div class="insight-card-title">Notable Changes</div>
-      <div class="insight-card-subtitle">Auto-detected highlights from the current period</div>
+      <div class="insight-card-title">My Insights</div>
+      <div class="insight-card-subtitle">How your week compares to your averages</div>
       <div id="my-notable-changes-content"></div>
     </div>
     <!-- My Actual vs Forecast -->
@@ -1939,10 +1967,10 @@
         <div id="admin-not-logged-content"></div>
       </div>
 
-      <!-- Notable Changes -->
+      <!-- Insights -->
       <div class="insight-card" data-testid="admin-notable-changes-card">
-        <div class="insight-card-title">Notable Changes</div>
-        <div class="insight-card-subtitle">Auto-detected highlights from the current period</div>
+        <div class="insight-card-title">Insights</div>
+        <div class="insight-card-subtitle">Key changes vs. averages with suggested discussion points</div>
         <div id="admin-notable-changes-content"></div>
       </div>
 
@@ -2360,62 +2388,105 @@
     return CHART_COLORS;
   }
 
-  // ─── Notable Changes Generator ───
-  function generateNotableChanges(week, people, projects, singlePerson) {
+  // ─── Insights Generator ───
+  function generateInsights(week, people, projects, singlePerson) {
     const insights = [];
     if (!appData || !week || week === 'all') return insights;
 
     const allWeeks = getAllWeeksSorted();
     const weekIdx = allWeeks.indexOf(week);
     const prevWeek = weekIdx > 0 ? allWeeks[weekIdx - 1] : null;
+    const priorWeeks = allWeeks.filter(w => w !== week && allWeeks.indexOf(w) < weekIdx);
     const effectivePeople = singlePerson ? [singlePerson] : (people || []);
     const effectiveProjects = projects || appData.projects || [];
+    const isSelf = !!singlePerson;
+    const seen = new Set(); // dedup key: "type:person:project"
 
-    // 1. Week-over-week project total change
-    if (prevWeek) {
+    function addInsight(type, person, project, obj) {
+      const key = type + ':' + (person || '') + ':' + (project || '');
+      if (seen.has(key)) return;
+      seen.add(key);
+      insights.push(obj);
+    }
+
+    // A) Per-Person vs Their Historical Average
+    effectivePeople.forEach(person => {
       effectiveProjects.forEach(pr => {
-        let curTotal = 0, prevTotal = 0;
-        effectivePeople.forEach(p => {
-          curTotal += getEntry(week, p, pr);
-          prevTotal += getEntry(prevWeek, p, pr);
-        });
-        const avg = effectivePeople.length || 1;
-        const curAvg = Math.round(curTotal / avg);
-        const prevAvg = Math.round(prevTotal / avg);
-        if (prevAvg > 0) {
-          const changePct = Math.round(((curAvg - prevAvg) / prevAvg) * 100);
-          if (Math.abs(changePct) >= 15) {
-            const icon = changePct > 0 ? '\u{1F4C8}' : '\u{1F4C9}';
-            const dir = changePct > 0 ? 'up' : 'down';
-            insights.push({ icon, text: `${pr} went ${dir} ${Math.abs(changePct)}% this week (avg ${prevAvg}% \u2192 ${curAvg}%)`, score: Math.abs(changePct) });
-          }
+        const curVal = getEntry(week, person, pr);
+        const vals = priorWeeks.map(w => getEntry(w, person, pr)).filter(v => v > 0);
+        if (vals.length < 1 || curVal <= 0) return;
+        const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+        if (avg <= 0) return;
+        const relDiff = Math.round(((curVal - avg) / avg) * 100);
+        const absDiff = Math.abs(curVal - avg);
+        if (Math.abs(relDiff) >= 30 && absDiff >= 8) {
+          const icon = relDiff > 0 ? '\u{1F4C8}' : '\u{1F4C9}';
+          const dir = relDiff > 0 ? 'more' : 'less';
+          const title = `Spending ${Math.abs(relDiff)}% ${dir} time on ${pr} than usual`;
+          const detail = `This week: ${curVal}% \u00B7 Avg: ${avg}% over ${vals.length} week${vals.length > 1 ? 's' : ''}`;
+          const question = isSelf
+            ? (relDiff > 0 ? `Is ${pr} taking more of your time intentionally?` : `Are you pulling back from ${pr} on purpose?`)
+            : (relDiff > 0 ? `Is ${pr} ramping up, or was this a one-off?` : `Are you pulling back from ${pr} for a reason?`);
+          addInsight('avg', person, pr, { icon, person: isSelf ? null : person, title, detail, question, score: Math.abs(relDiff) + absDiff });
         }
       });
-    }
+    });
 
-    // 2. Person vs their historical average
-    if (allWeeks.length >= 3) {
-      effectivePeople.forEach(person => {
-        effectiveProjects.forEach(pr => {
-          const curVal = getEntry(week, person, pr);
-          const historicalWeeks = allWeeks.filter(w => w !== week);
-          const vals = historicalWeeks.map(w => getEntry(w, person, pr)).filter(v => v > 0);
-          if (vals.length >= 2 && curVal > 0) {
-            const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
-            if (avg > 0) {
-              const diffPct = Math.round(((curVal - avg) / avg) * 100);
-              if (Math.abs(diffPct) >= 40) {
-                const icon = diffPct > 0 ? '\u{1F4C8}' : '\u{1F4C9}';
-                const dir = diffPct > 0 ? 'more' : 'less';
-                insights.push({ icon, text: `${person} spent ${Math.abs(diffPct)}% ${dir} time on ${pr} than their average`, score: Math.abs(diffPct) });
-              }
-            }
-          }
-        });
+    // B) Total Utilization vs Average
+    effectivePeople.forEach(person => {
+      const curTotal = getPersonTotal(week, person);
+      const prevTotals = priorWeeks.map(w => getPersonTotal(w, person)).filter(v => v > 0);
+      if (prevTotals.length < 1) return;
+      const avgTotal = Math.round(prevTotals.reduce((a, b) => a + b, 0) / prevTotals.length);
+      const diff = curTotal - avgTotal;
+      if (Math.abs(diff) >= 15) {
+        const icon = diff > 0 ? '\u{1F4C8}' : '\u{1F4C9}';
+        const dir = diff > 0 ? 'higher' : 'lower';
+        const title = `Total utilization is ${curTotal}% vs ${avgTotal}% average`;
+        const detail = `${Math.abs(diff)}pp ${dir} than usual over ${prevTotals.length} week${prevTotals.length > 1 ? 's' : ''}`;
+        const question = isSelf
+          ? `Is this change in your total workload intentional?`
+          : `Capacity issue or intentional change?`;
+        addInsight('util', person, null, { icon, person: isSelf ? null : person, title, detail, question, score: Math.abs(diff) + 20 });
+      }
+    });
+
+    // C) New Project Allocation (never worked on it before → >0 this week)
+    effectivePeople.forEach(person => {
+      effectiveProjects.forEach(pr => {
+        const curVal = getEntry(week, person, pr);
+        if (curVal <= 0) return;
+        const anyPrior = priorWeeks.some(w => getEntry(w, person, pr) > 0);
+        if (!anyPrior) {
+          const title = isSelf ? `Picked up ${pr} for the first time (${curVal}%)` : `Picked up ${pr} for the first time (${curVal}%)`;
+          const detail = `No prior allocation in ${priorWeeks.length} previous week${priorWeeks.length !== 1 ? 's' : ''}`;
+          const question = isSelf
+            ? `What prompted your new allocation to ${pr}?`
+            : `What prompted the new allocation to ${pr}?`;
+          addInsight('new', person, pr, { icon: '\u{1F195}', person: isSelf ? null : person, title, detail, question, score: curVal + 30 });
+        }
       });
-    }
+    });
 
-    // 3. Biggest shift between projects (person moved allocation)
+    // D) Dropped Project (>0 in at least 2 prior weeks → 0 this week)
+    effectivePeople.forEach(person => {
+      effectiveProjects.forEach(pr => {
+        const curVal = getEntry(week, person, pr);
+        if (curVal > 0) return;
+        const priorVals = priorWeeks.map(w => getEntry(w, person, pr)).filter(v => v > 0);
+        if (priorVals.length >= 2) {
+          const avg = Math.round(priorVals.reduce((a, b) => a + b, 0) / priorVals.length);
+          const title = `Dropped off ${pr} after averaging ${avg}%`;
+          const detail = `Had allocation in ${priorVals.length} of ${priorWeeks.length} prior weeks`;
+          const question = isSelf
+            ? `Are you done with ${pr}, or is this temporary?`
+            : `Is ${pr} winding down or shifting to someone else?`;
+          addInsight('drop', person, pr, { icon: '\u{1F6AB}', person: isSelf ? null : person, title, detail, question, score: avg + 25 });
+        }
+      });
+    });
+
+    // E) Big Week-over-Week Shift (one project up ≥10pp, another down ≥10pp)
     if (prevWeek) {
       effectivePeople.forEach(person => {
         let biggestUp = null, biggestDown = null;
@@ -2427,38 +2498,39 @@
           if (diff < 0 && (!biggestDown || diff < biggestDown.diff)) biggestDown = { pr, diff, cur, prev };
         });
         if (biggestUp && biggestDown && biggestUp.diff >= 10 && Math.abs(biggestDown.diff) >= 10) {
-          insights.push({ icon: '\u{1F504}', text: `${person} shifted ${Math.abs(biggestDown.diff)}% from ${biggestDown.pr} to ${biggestUp.pr}`, score: biggestUp.diff + Math.abs(biggestDown.diff) });
+          // Skip if we already flagged "new" for the up-project
+          const upKey = 'new:' + person + ':' + biggestUp.pr;
+          if (seen.has(upKey)) return;
+          const title = `Shifted from ${biggestDown.pr} to ${biggestUp.pr}`;
+          const detail = `${biggestDown.pr}: ${biggestDown.prev}%\u2192${biggestDown.cur}%, ${biggestUp.pr}: ${biggestUp.prev}%\u2192${biggestUp.cur}%`;
+          const question = isSelf
+            ? `Was this a planned reallocation on your part?`
+            : `Was this a planned reallocation?`;
+          addInsight('shift', person, biggestUp.pr, { icon: '\u{1F504}', person: isSelf ? null : person, title, detail, question, score: biggestUp.diff + Math.abs(biggestDown.diff) + 10 });
         }
       });
     }
 
-    // 4. New allocation (0 → >0)
-    if (prevWeek) {
-      effectivePeople.forEach(person => {
-        effectiveProjects.forEach(pr => {
-          const cur = getEntry(week, person, pr);
-          const prev = getEntry(prevWeek, person, pr);
-          if (prev === 0 && cur > 0) {
-            insights.push({ icon: '\u{1F195}', text: `${person} started working on ${pr} this week (${cur}%)`, score: cur + 20 });
-          }
-        });
+    // F) Forecast Accuracy (≥15pp gap)
+    effectivePeople.forEach(person => {
+      effectiveProjects.forEach(pr => {
+        const actual = getEntry(week, person, pr);
+        const forecast = getForecast(week, person, pr);
+        if (forecast <= 0 || actual <= 0) return;
+        const gap = Math.abs(actual - forecast);
+        if (gap >= 15) {
+          const dir = actual > forecast ? 'above' : 'below';
+          const title = `${pr} came in ${gap}pp ${dir} forecast`;
+          const detail = `Forecast: ${forecast}% \u00B7 Actual: ${actual}%`;
+          const question = isSelf
+            ? `What changed from your forecast?`
+            : `What caused the variance from the forecast?`;
+          addInsight('forecast', person, pr, { icon: '\u26A0\uFE0F', person: isSelf ? null : person, title, detail, question, score: gap + 15 });
+        }
       });
-    }
+    });
 
-    // 5. Dropped project (>0 → 0)
-    if (prevWeek) {
-      effectivePeople.forEach(person => {
-        effectiveProjects.forEach(pr => {
-          const cur = getEntry(week, person, pr);
-          const prev = getEntry(prevWeek, person, pr);
-          if (prev > 0 && cur === 0) {
-            insights.push({ icon: '\u{1F504}', text: `${person} stopped working on ${pr} this week`, score: prev + 15 });
-          }
-        });
-      });
-    }
-
-    // 6. Highest concentration (>= 75% on one project)
+    // G) Concentration Risk (≥75% on one project)
     effectivePeople.forEach(person => {
       const total = getPersonTotal(week, person);
       if (total <= 0) return;
@@ -2466,42 +2538,73 @@
         const val = getEntry(week, person, pr);
         const pct = Math.round((val / total) * 100);
         if (pct >= 75) {
-          insights.push({ icon: '\u26A0\uFE0F', text: `${person} is spending ${pct}% of time on a single project (${pr})`, score: pct });
+          const title = `${pct}% concentrated on ${pr}`;
+          const detail = `${val}% of ${total}% total allocation on a single project`;
+          const question = isSelf
+            ? `Do you have bandwidth if another project needs you?`
+            : `Is there a succession/coverage plan?`;
+          addInsight('conc', person, pr, { icon: '\u{1F3AF}', person: isSelf ? null : person, title, detail, question, score: pct });
         }
       });
     });
 
-    // 7. Forecast vs Actual divergence
+    // H) Team-Level: Project Trend (≥20pp total change across all people)
+    if (prevWeek && !isSelf) {
+      effectiveProjects.forEach(pr => {
+        let curTotal = 0, prevTotal = 0;
+        effectivePeople.forEach(p => {
+          curTotal += getEntry(week, p, pr);
+          prevTotal += getEntry(prevWeek, p, pr);
+        });
+        const diff = curTotal - prevTotal;
+        if (Math.abs(diff) >= 20) {
+          const dir = diff > 0 ? 'increased' : 'decreased';
+          const title = `Team effort on ${pr} ${dir} significantly`;
+          const detail = `Last week: ${prevTotal}% total \u00B7 This week: ${curTotal}% total`;
+          const question = `Is this shift aligned with project priorities?`;
+          addInsight('team', null, pr, { icon: diff > 0 ? '\u{1F4C8}' : '\u{1F4C9}', person: null, title, detail, question, score: Math.abs(diff) + 5 });
+        }
+      });
+    }
+
+    // I) Consistency Check (same ±3pp for 3+ consecutive weeks)
     effectivePeople.forEach(person => {
       effectiveProjects.forEach(pr => {
-        const actual = getEntry(week, person, pr);
-        const forecast = getForecast(week, person, pr);
-        if (forecast > 0 && actual > 0) {
-          const gap = Math.abs(actual - forecast);
-          if (gap >= 15) {
-            const dir = actual > forecast ? 'higher' : 'lower';
-            insights.push({ icon: '\u26A0\uFE0F', text: `${person}'s actual for ${pr} was ${gap}% ${dir} than forecast (${forecast}% forecast vs ${actual}% actual)`, score: gap + 10 });
-          }
+        const curVal = getEntry(week, person, pr);
+        if (curVal <= 0) return;
+        // Look backwards for consecutive weeks within ±3pp
+        let streak = 1;
+        for (let i = priorWeeks.length - 1; i >= 0; i--) {
+          const v = getEntry(priorWeeks[i], person, pr);
+          if (Math.abs(v - curVal) <= 3) streak++;
+          else break;
+        }
+        if (streak >= 3) {
+          const title = `Steady on ${pr} at ~${curVal}% for ${streak} weeks`;
+          const detail = `Consistent allocation within \u00B13% over the streak`;
+          addInsight('steady', person, pr, { icon: '\u2705', person: isSelf ? null : person, title, detail, question: null, score: streak * 3 });
         }
       });
     });
 
-    // Sort by score descending, return top 5
+    // Sort by score descending, dedup already handled, return max 7
     insights.sort((a, b) => b.score - a.score);
-    return insights.slice(0, 5).map(i => ({ icon: i.icon, text: i.text }));
+    return insights.slice(0, 7);
   }
 
-  function renderNotableChangesHTML(containerId, changes) {
+  function renderInsightsHTML(containerId, changes) {
     const container = $(containerId);
     if (!container) return;
     if (!changes || changes.length === 0) {
-      container.innerHTML = '<div class="notable-changes-empty">No notable changes for this period</div>';
+      container.innerHTML = '<div class="insights-empty">No insights for this period</div>';
       return;
     }
-    container.innerHTML = '<div class="notable-changes-list">' +
-      changes.map(c =>
-        `<div class="notable-change-row"><span class="notable-change-icon">${c.icon}</span><span class="notable-change-text">${c.text}</span></div>`
-      ).join('') + '</div>';
+    container.innerHTML = '<div class="insights-list">' +
+      changes.map(c => {
+        const personHtml = c.person ? `<div class="insight-person">${c.person}</div>` : '';
+        const questionHtml = c.question ? `<div class="insight-question">\u{1F4AC} ${c.question}</div>` : '';
+        return `<div class="insight-row"><div class="insight-icon">${c.icon}</div><div class="insight-body">${personHtml}<div class="insight-title">${c.title}</div><div class="insight-detail">${c.detail}</div>${questionHtml}</div></div>`;
+      }).join('') + '</div>';
   }
 
   function showToast(msg) {
@@ -3116,9 +3219,9 @@
       </div>
     `;
 
-    // My Notable Changes
-    const myChanges = generateNotableChanges(weekVal, null, projects, currentPerson);
-    renderNotableChangesHTML('my-notable-changes-content', myChanges);
+    // My Insights
+    const myInsights = generateInsights(weekVal, null, projects, currentPerson);
+    renderInsightsHTML('my-notable-changes-content', myInsights);
 
     // My Time Split (Pie/Doughnut)
     const pieData = projects.map((pr, i) => {
@@ -4038,8 +4141,8 @@
 
     renderAdminUtilization(selectedWeek, filteredPeople, mode);
     renderAdminNotLogged(selectedWeek, people, mode);
-    const adminChanges = generateNotableChanges(selectedWeek, filteredPeople, filteredProjects, null);
-    renderNotableChangesHTML('admin-notable-changes-content', adminChanges);
+    const adminInsights = generateInsights(selectedWeek, filteredPeople, filteredProjects, null);
+    renderInsightsHTML('admin-notable-changes-content', adminInsights);
     renderAdminBreakdown(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminPieChart(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminProjectStaffing(selectedWeek, filteredPeople, filteredProjects, mode);
