@@ -1358,6 +1358,190 @@
   .forecast-section-total.forecast-over { color: var(--color-danger); }
   .forecast-section-total.forecast-perfect { color: var(--color-forecast); }
 
+  /* ─── Combined Entry Card ─── */
+  .entry-card {
+    background: var(--color-surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    margin: 12px 16px;
+    overflow: hidden;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .entry-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+
+  .entry-header-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  .entry-header-sub {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin-top: 2px;
+  }
+
+  .entry-totals {
+    display: flex;
+    gap: 8px;
+  }
+
+  .entry-total-pill {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 12px;
+    background: var(--color-bg);
+    border-radius: var(--radius-sm);
+    min-width: 64px;
+  }
+
+  .entry-total-pill.forecast-pill {
+    background: var(--color-forecast-light);
+  }
+
+  .entry-total-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+  }
+
+  .forecast-pill .entry-total-label {
+    color: var(--color-forecast);
+  }
+
+  .entry-total-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color-text);
+  }
+
+  .entry-total-value.over { color: var(--color-danger); }
+  .entry-total-value.perfect { color: var(--color-success); }
+  .entry-total-value.forecast-over { color: var(--color-danger); }
+  .entry-total-value.forecast-perfect { color: var(--color-forecast); }
+
+  .entry-table-header {
+    display: grid;
+    grid-template-columns: 1fr 72px 72px;
+    padding: 8px 16px;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border-light);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+  }
+
+  .entry-col-actual, .entry-col-forecast {
+    text-align: center;
+  }
+
+  .entry-row {
+    display: grid;
+    grid-template-columns: 1fr 72px 72px;
+    align-items: center;
+    padding: 6px 16px;
+    border-bottom: 1px solid var(--color-border-light);
+    transition: background var(--transition);
+  }
+
+  .entry-row:last-child {
+    border-bottom: none;
+  }
+
+  .entry-row:hover {
+    background: var(--color-bg);
+  }
+
+  .entry-project-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .entry-forecast-hint {
+    font-size: 11px;
+    color: var(--color-forecast);
+    font-weight: 400;
+  }
+
+  .entry-input-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .entry-input-cell .pct-input {
+    width: 48px;
+    text-align: center;
+    padding: 6px 4px;
+    font-size: 14px;
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font-family: inherit;
+    font-weight: 600;
+    outline: none;
+    transition: border-color var(--transition);
+    -moz-appearance: textfield;
+  }
+
+  .entry-input-cell .pct-input::-webkit-inner-spin-button,
+  .entry-input-cell .pct-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  .entry-input-cell .pct-input::placeholder {
+    color: var(--color-text-muted);
+    font-weight: 400;
+    opacity: 0.6;
+  }
+
+  .entry-input-cell .pct-input:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(30, 58, 95, 0.1);
+  }
+
+  .entry-input-cell .pct-input.has-value {
+    border-color: var(--color-accent);
+    background: var(--color-accent-light);
+  }
+
+  .entry-input-cell .pct-input.forecast-input:focus {
+    border-color: var(--color-forecast);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+  }
+
+  .entry-input-cell .pct-input.forecast-input.has-value {
+    border-color: var(--color-forecast);
+    border-style: dashed;
+    background: var(--color-forecast-light);
+  }
+
+  .entry-input-cell .pct-suffix {
+    font-size: 12px;
+    color: var(--color-text-muted);
+  }
+
   /* ─── Chart containers ─── */
   .chart-container {
     position: relative;
@@ -1777,41 +1961,32 @@
     </a>
   </div>
 
-  <div class="save-area">
-    <button class="save-btn" id="save-btn-top" data-testid="save-btn-top">Save</button>
-  </div>
-
-  <!-- Section 1: This Week — Actuals -->
-  <div class="section-divider" id="actuals-section-header">
-    <div class="section-divider-title">This Week — Actuals</div>
-    <div class="section-divider-sub" id="actuals-week-label"></div>
-  </div>
-
-  <div class="total-banner" data-testid="total-banner">
-    <div class="total-group">
-      <span class="total-label">Actual Total</span>
-      <span class="total-value" id="total-actual" data-testid="total-actual">0%</span>
+  <div class="entry-card">
+    <div class="entry-header">
+      <div class="entry-header-left">
+        <div class="entry-header-title">This Week</div>
+        <div class="entry-header-sub" id="entry-week-label"></div>
+      </div>
+      <div class="entry-totals">
+        <div class="entry-total-pill">
+          <span class="entry-total-label">Actual</span>
+          <span class="entry-total-value" id="total-actual" data-testid="total-actual">0%</span>
+        </div>
+        <div class="entry-total-pill forecast-pill">
+          <span class="entry-total-label">Forecast</span>
+          <span class="entry-total-value" id="total-forecast" data-testid="total-forecast">0%</span>
+        </div>
+      </div>
     </div>
-  </div>
-
-  <div class="project-list" id="project-list" data-testid="project-list"></div>
-
-  <!-- Section 2: Next Week — Forecast -->
-  <div class="section-divider" id="forecast-section-header">
-    <div class="section-divider-title forecast-title">Next Week — Forecast</div>
-    <div class="section-divider-sub" id="forecast-week-label"></div>
-  </div>
-
-  <div class="forecast-section-banner">
-    <div class="total-group">
-      <span class="total-label" style="color:var(--color-forecast)">Forecast Total</span>
-      <span class="forecast-section-total" id="total-forecast" data-testid="total-forecast">0%</span>
+    <div class="entry-table-header">
+      <span class="entry-col-project">Project</span>
+      <span class="entry-col-actual">Actual</span>
+      <span class="entry-col-forecast" id="entry-forecast-col-label">Forecast</span>
     </div>
+    <div id="combined-project-list" class="entry-table-body"></div>
   </div>
 
-  <div class="project-list" id="forecast-project-list" data-testid="forecast-project-list"></div>
-
-  <div class="save-area">
+  <div class="save-area" style="margin:0 16px 16px;max-width:640px;margin-left:auto;margin-right:auto;">
     <button class="save-btn" id="save-btn" data-testid="save-btn">Save</button>
   </div>
 
@@ -2223,12 +2398,10 @@
   const weekSelect = $('week-select');
   const totalActual = $('total-actual');
   const totalForecast = $('total-forecast');
-  const projectList = $('project-list');
-  const forecastProjectList = $('forecast-project-list');
-  const actualsWeekLabel = $('actuals-week-label');
-  const forecastWeekLabel = $('forecast-week-label');
+  const combinedProjectList = $('combined-project-list');
+  const entryWeekLabel = $('entry-week-label');
+  const entryForecastColLabel = $('entry-forecast-col-label');
   const saveBtn = $('save-btn');
-  const saveBtnTop = $('save-btn-top');
   const saveWarningModal = $('save-warning-modal');
   const saveWarningMsg = $('save-warning-msg');
   const saveWarningCancel = $('save-warning-cancel');
@@ -2923,44 +3096,41 @@
     };
   }
 
-  // ─── Project List (split: actuals for currentWeek, forecasts for next week) ───
+  // ─── Combined Project List (actuals + forecasts in one table) ───
   function renderProjectList() {
-    projectList.innerHTML = '';
-    forecastProjectList.innerHTML = '';
+    combinedProjectList.innerHTML = '';
     const projects = appData.projects || [];
     const forecasts = appData.forecasts || {};
     const nextWeek = getNextWeek(currentWeek);
 
-    // Update section labels
-    actualsWeekLabel.textContent = getWeekDateRange(currentWeek);
-    forecastWeekLabel.textContent = getWeekDateRange(nextWeek);
+    // Update header labels
+    if (entryWeekLabel) entryWeekLabel.textContent = getWeekDateRange(currentWeek);
+    if (entryForecastColLabel) entryForecastColLabel.textContent = 'Forecast';
 
     projects.forEach((proj) => {
       const actualKey = `${currentWeek}|${currentPerson}|${proj}`;
       const actualVal = appData.entries[actualKey] || 0;
-      // Show prior forecast for this week as reference (non-editable)
       const priorForecastVal = forecasts[actualKey] || 0;
+      const forecastKey = `${nextWeek}|${currentPerson}|${proj}`;
+      const forecastVal = forecasts[forecastKey] || 0;
 
-      // ── Actuals row ──
       const row = document.createElement('div');
-      row.className = 'project-row';
+      row.className = 'entry-row';
 
+      // Project name with forecast hint
       const nameEl = document.createElement('div');
-      nameEl.className = 'project-name';
+      nameEl.className = 'entry-project-name';
       nameEl.textContent = proj;
       if (priorForecastVal > 0) {
-        const ref = document.createElement('span');
-        ref.className = 'forecast-ref';
-        ref.textContent = `Forecasted: ${priorForecastVal}%`;
-        nameEl.appendChild(ref);
+        const hint = document.createElement('span');
+        hint.className = 'entry-forecast-hint';
+        hint.textContent = `f: ${priorForecastVal}%`;
+        nameEl.appendChild(hint);
       }
 
-      const inputsGroup = document.createElement('div');
-      inputsGroup.className = 'inputs-group';
-
-      const actualWrap = document.createElement('div');
-      actualWrap.className = 'pct-input-wrap';
-
+      // Actual input cell
+      const actualCell = document.createElement('div');
+      actualCell.className = 'entry-input-cell';
       const actualInput = document.createElement('input');
       actualInput.type = 'number';
       actualInput.className = 'pct-input actual-input' + (actualVal > 0 ? ' has-value' : '');
@@ -2973,48 +3143,25 @@
       actualInput.setAttribute('data-project', proj);
       actualInput.setAttribute('data-type', 'actual');
       actualInput.setAttribute('inputmode', 'numeric');
-
       actualInput.addEventListener('input', () => {
         actualInput.classList.toggle('has-value', actualInput.value !== '' && actualInput.value !== '0');
         updateTotal();
       });
-
       actualInput.addEventListener('focus', () => {
         if (actualInput.value === '0' || actualInput.value === '') {
           actualInput.value = '';
           actualInput.select();
         }
       });
-
       const actualSuffix = document.createElement('span');
       actualSuffix.className = 'pct-suffix';
       actualSuffix.textContent = '%';
+      actualCell.appendChild(actualInput);
+      actualCell.appendChild(actualSuffix);
 
-      actualWrap.appendChild(actualInput);
-      actualWrap.appendChild(actualSuffix);
-      inputsGroup.appendChild(actualWrap);
-
-      row.appendChild(nameEl);
-      row.appendChild(inputsGroup);
-      projectList.appendChild(row);
-
-      // ── Forecast row (for next week) ──
-      const forecastKey = `${nextWeek}|${currentPerson}|${proj}`;
-      const forecastVal = forecasts[forecastKey] || 0;
-
-      const fRow = document.createElement('div');
-      fRow.className = 'project-row';
-
-      const fNameEl = document.createElement('div');
-      fNameEl.className = 'project-name';
-      fNameEl.textContent = proj;
-
-      const fInputsGroup = document.createElement('div');
-      fInputsGroup.className = 'inputs-group';
-
-      const forecastWrap = document.createElement('div');
-      forecastWrap.className = 'pct-input-wrap';
-
+      // Forecast input cell
+      const forecastCell = document.createElement('div');
+      forecastCell.className = 'entry-input-cell';
       const forecastInput = document.createElement('input');
       forecastInput.type = 'number';
       forecastInput.className = 'pct-input forecast-input' + (forecastVal > 0 ? ' has-value' : '');
@@ -3027,36 +3174,32 @@
       forecastInput.setAttribute('data-project', proj);
       forecastInput.setAttribute('data-type', 'forecast');
       forecastInput.setAttribute('inputmode', 'numeric');
-
       forecastInput.addEventListener('input', () => {
         forecastInput.classList.toggle('has-value', forecastInput.value !== '' && forecastInput.value !== '0');
         updateTotal();
       });
-
       forecastInput.addEventListener('focus', () => {
         if (forecastInput.value === '0' || forecastInput.value === '') {
           forecastInput.value = '';
           forecastInput.select();
         }
       });
-
       const forecastSuffix = document.createElement('span');
       forecastSuffix.className = 'pct-suffix';
       forecastSuffix.textContent = '%';
+      forecastCell.appendChild(forecastInput);
+      forecastCell.appendChild(forecastSuffix);
 
-      forecastWrap.appendChild(forecastInput);
-      forecastWrap.appendChild(forecastSuffix);
-      fInputsGroup.appendChild(forecastWrap);
-
-      fRow.appendChild(fNameEl);
-      fRow.appendChild(fInputsGroup);
-      forecastProjectList.appendChild(fRow);
+      row.appendChild(nameEl);
+      row.appendChild(actualCell);
+      row.appendChild(forecastCell);
+      combinedProjectList.appendChild(row);
     });
   }
 
   function updateTotal() {
-    const actualInputs = projectList.querySelectorAll('.actual-input');
-    const forecastInputs = forecastProjectList.querySelectorAll('.forecast-input');
+    const actualInputs = combinedProjectList.querySelectorAll('.actual-input');
+    const forecastInputs = combinedProjectList.querySelectorAll('.forecast-input');
 
     let actualTotal = 0;
     actualInputs.forEach((inp) => {
@@ -3087,7 +3230,8 @@
 
   // ─── Save (with forecasts) ───
   function setSaveBtnsState(text, cls, disabled) {
-    [saveBtn, saveBtnTop].forEach(btn => {
+    [saveBtn].forEach(btn => {
+      if (!btn) return;
       btn.textContent = text;
       if (cls) btn.classList.add(cls); else btn.classList.remove('saved');
       btn.disabled = disabled;
@@ -3118,7 +3262,7 @@
         freshData.weeks.sort();
       }
 
-      const actualInputs = projectList.querySelectorAll('.actual-input');
+      const actualInputs = combinedProjectList.querySelectorAll('.actual-input');
       actualInputs.forEach((inp) => {
         const proj = inp.getAttribute('data-project');
         const key = `${currentWeek}|${currentPerson}|${proj}`;
@@ -3135,7 +3279,7 @@
         freshData.weeks.push(nextWeek);
         freshData.weeks.sort();
       }
-      const forecastInputs = forecastProjectList.querySelectorAll('.forecast-input');
+      const forecastInputs = combinedProjectList.querySelectorAll('.forecast-input');
       forecastInputs.forEach((inp) => {
         const proj = inp.getAttribute('data-project');
         const key = `${nextWeek}|${currentPerson}|${proj}`;
@@ -3216,7 +3360,6 @@
   }
 
   saveBtn.addEventListener('click', handleSaveClick);
-  saveBtnTop.addEventListener('click', handleSaveClick);
 
   saveWarningCancel.addEventListener('click', () => {
     saveWarningModal.classList.remove('active');
