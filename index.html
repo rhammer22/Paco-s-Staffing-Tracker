@@ -1659,7 +1659,7 @@
     <!-- My Actual vs Forecast -->
     <div class="insight-card" data-testid="my-forecast-card">
       <div class="insight-card-title">My Actual vs Forecast</div>
-      <div class="insight-card-subtitle">Solid = actual · Dashed = forecast</div>
+      <div class="insight-card-subtitle">Each line shows one project — solid for logged actuals, then dashed where it shifts to forecast</div>
       <div class="chart-container">
         <canvas id="my-forecast-chart" data-testid="my-forecast-chart"></canvas>
       </div>
@@ -1769,7 +1769,7 @@
         </div>
         <div class="insight-card" data-testid="admin-pie-card">
           <div class="insight-card-title">Project Share</div>
-          <div class="insight-card-subtitle">Total hours allocated to each project across the team</div>
+          <div class="insight-card-subtitle">Each slice shows a project's share of total team effort (normalized to 100%)</div>
           <div class="chart-container">
             <canvas id="admin-pie-chart" data-testid="admin-pie-chart"></canvas>
           </div>
@@ -1796,7 +1796,7 @@
       <!-- Actual vs Forecast Trend -->
       <div class="insight-card" style="margin-top:16px" data-testid="admin-avf-trend-card">
         <div class="insight-card-title">Actual vs Forecast Trend</div>
-        <div class="insight-card-subtitle">Solid = actual · Dashed = forecast</div>
+        <div class="insight-card-subtitle">Each line shows one project — solid for logged actuals, then dashed where it shifts to forecast</div>
         <div class="chart-container">
           <canvas id="admin-avf-trend-chart" data-testid="admin-avf-trend-chart"></canvas>
         </div>
@@ -2729,49 +2729,58 @@
       destroyChart('my-trend-chart');
     }
 
-    // My Actual vs Forecast (Line chart with solid + dashed)
+    // My Actual vs Forecast (continuous line: solid=actual, dashed=forecast)
+    const cw = getCurrentWeek();
+    const nw = getNextWeek(cw);
+    // Build timeline: all actual weeks + next week for forecast
+    const avfWeeks = [...new Set([...allWeeks, nw])].sort();
+    // Find the index of the last actual week (current week) — segments after this are forecast
+    const cwIdx = avfWeeks.indexOf(cw);
+
     const forecastDatasets = [];
     projects.forEach((pr, i) => {
-      const actualData = allWeeks.map(w => getEntry(w, currentPerson, pr));
-      const forecastData = allWeeks.map(w => getForecast(w, currentPerson, pr));
-      const hasActual = actualData.some(v => v > 0);
-      const hasForecast = forecastData.some(v => v > 0);
-      if (!hasActual && !hasForecast) return;
+      const data = avfWeeks.map(w => {
+        const actual = getEntry(w, currentPerson, pr);
+        const forecast = getForecast(w, currentPerson, pr);
+        // Use actual if it exists, otherwise forecast
+        if (actual > 0) return actual;
+        if (forecast > 0) return forecast;
+        return null; // null = gap in chart
+      });
+      // Track which points are forecast-only
+      const isForecast = avfWeeks.map(w => {
+        return getEntry(w, currentPerson, pr) === 0 && getForecast(w, currentPerson, pr) > 0;
+      });
+      const hasAny = data.some(v => v !== null && v > 0);
+      if (!hasAny) return;
       const color = CHART_COLORS[i % CHART_COLORS.length];
-      if (hasActual) {
-        forecastDatasets.push({
-          label: `${pr} (actual)`,
-          data: actualData,
-          borderColor: color,
-          backgroundColor: color + '20',
-          borderWidth: 2,
-          borderDash: [],
-          tension: 0.3,
-          pointRadius: 3,
-          fill: false
-        });
-      }
-      if (hasForecast) {
-        forecastDatasets.push({
-          label: `${pr} (forecast)`,
-          data: forecastData,
-          borderColor: color,
-          backgroundColor: color + '10',
-          borderWidth: 2,
-          borderDash: [6, 4],
-          tension: 0.3,
-          pointRadius: 2,
-          pointStyle: 'triangle',
-          fill: false
-        });
-      }
+
+      forecastDatasets.push({
+        label: pr,
+        data: data,
+        _isForecast: isForecast, // store per-dataset for tooltip/segment access
+        borderColor: color,
+        backgroundColor: color + '20',
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: data.map((v, idx) => v !== null ? (isForecast[idx] ? 4 : 3) : 0),
+        pointStyle: data.map((v, idx) => isForecast[idx] ? 'triangle' : 'circle'),
+        fill: false,
+        spanGaps: true,
+        segment: {
+          borderDash: (ctx) => {
+            const nextIdx = ctx.p1DataIndex;
+            return ctx.dataset._isForecast[nextIdx] ? [6, 4] : [];
+          }
+        }
+      });
     });
 
     if (forecastDatasets.length > 0) {
       createChart('my-forecast-chart', {
         type: 'line',
         data: {
-          labels: allWeeks,
+          labels: avfWeeks,
           datasets: forecastDatasets
         },
         options: {
@@ -2785,7 +2794,13 @@
           plugins: {
             legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
             tooltip: {
-              callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
+              callbacks: {
+                label: (ctx) => {
+                  const idx = ctx.dataIndex;
+                  const type = ctx.dataset._isForecast[idx] ? 'forecast' : 'actual';
+                  return `${ctx.dataset.label}: ${ctx.raw}% (${type})`;
+                }
+              }
             }
           }
         }
@@ -3672,6 +3687,7 @@
     const allW = isAllWeeks ? getAllWeeksSorted() : null;
     const effectiveMode = mode || 'actual';
     const colors = getMutedColors(effectiveMode);
+    // Sum raw effort points per project (each person's % contributes to the pool)
     const pieData = filteredProjects.map((pr, i) => {
       let total = 0;
       filteredPeople.forEach(person => {
@@ -3681,20 +3697,26 @@
           total += getDataByMode(week, person, pr, effectiveMode);
         }
       });
-      return { name: pr, value: total, color: colors[i % colors.length] };
-    }).filter(d => d.value > 0);
+      return { name: pr, rawValue: total, color: colors[i % colors.length] };
+    }).filter(d => d.rawValue > 0);
 
     if (pieData.length === 0) {
       destroyChart('admin-pie-chart');
       return;
     }
 
+    // Normalize to 100% so the donut always totals 100
+    const grandTotal = pieData.reduce((s, d) => s + d.rawValue, 0);
+    pieData.forEach(d => {
+      d.pct = grandTotal > 0 ? Math.round(d.rawValue / grandTotal * 1000) / 10 : 0;
+    });
+
     createChart('admin-pie-chart', {
       type: 'doughnut',
       data: {
         labels: pieData.map(d => d.name),
         datasets: [{
-          data: pieData.map(d => d.value),
+          data: pieData.map(d => d.pct),
           backgroundColor: pieData.map(d => d.color),
           borderWidth: 2,
           borderColor: '#ffffff'
@@ -3709,9 +3731,7 @@
           tooltip: {
             callbacks: {
               label: (ctx) => {
-                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
-                const pct = total > 0 ? Math.round(ctx.raw / total * 100) : 0;
-                return `${ctx.label}: ${ctx.raw}% total (${pct}% of team)`;
+                return `${ctx.label}: ${ctx.raw}% of team effort`;
               }
             }
           }
@@ -3878,11 +3898,15 @@
     });
   }
 
-  // ─── Actual vs Forecast Trend (new) ───
+  // ─── Actual vs Forecast Trend (continuous line: solid→dashed) ───
   function renderAdminAvfTrend(filteredPeople, filteredProjects) {
     const allWeeks = getAllWeeksSorted();
+    const cwk = getCurrentWeek();
+    const nwk = getNextWeek(cwk);
+    // Include next week so forecast data has a place on the x-axis
+    const avfWeeks = [...new Set([...allWeeks, nwk])].sort();
 
-    if (allWeeks.length === 0 || filteredProjects.length === 0) {
+    if (avfWeeks.length === 0 || filteredProjects.length === 0) {
       destroyChart('admin-avf-trend-chart');
       return;
     }
@@ -3891,50 +3915,51 @@
     filteredProjects.forEach((pr, i) => {
       const color = CHART_COLORS[i % CHART_COLORS.length];
 
-      // Actual line (solid)
-      const actualData = allWeeks.map(w => {
-        let total = 0;
-        filteredPeople.forEach(person => { total += getEntry(w, person, pr); });
-        return filteredPeople.length > 0 ? Math.round(total / filteredPeople.length) : 0;
+      const data = avfWeeks.map(w => {
+        let actualTotal = 0, forecastTotal = 0;
+        filteredPeople.forEach(person => {
+          actualTotal += getEntry(w, person, pr);
+          forecastTotal += getForecast(w, person, pr);
+        });
+        const avg = filteredPeople.length > 0 ? filteredPeople.length : 1;
+        const actualAvg = Math.round(actualTotal / avg);
+        const forecastAvg = Math.round(forecastTotal / avg);
+        if (actualAvg > 0) return actualAvg;
+        if (forecastAvg > 0) return forecastAvg;
+        return null;
       });
 
-      // Forecast line (dashed)
-      const forecastData = allWeeks.map(w => {
-        let total = 0;
-        filteredPeople.forEach(person => { total += getForecast(w, person, pr); });
-        return filteredPeople.length > 0 ? Math.round(total / filteredPeople.length) : 0;
+      const isForecast = avfWeeks.map(w => {
+        let actualTotal = 0, forecastTotal = 0;
+        filteredPeople.forEach(person => {
+          actualTotal += getEntry(w, person, pr);
+          forecastTotal += getForecast(w, person, pr);
+        });
+        return actualTotal === 0 && forecastTotal > 0;
       });
 
-      const hasActual = actualData.some(v => v > 0);
-      const hasForecast = forecastData.some(v => v > 0);
+      const hasAny = data.some(v => v !== null && v > 0);
+      if (!hasAny) return;
 
-      if (hasActual) {
-        datasets.push({
-          label: `${pr} (actual)`,
-          data: actualData,
-          borderColor: color,
-          backgroundColor: color + '20',
-          borderWidth: 2,
-          borderDash: [],
-          tension: 0.3,
-          pointRadius: 3,
-          fill: false
-        });
-      }
-      if (hasForecast) {
-        datasets.push({
-          label: `${pr} (forecast)`,
-          data: forecastData,
-          borderColor: color,
-          backgroundColor: color + '10',
-          borderWidth: 2,
-          borderDash: [6, 4],
-          tension: 0.3,
-          pointRadius: 2,
-          pointStyle: 'triangle',
-          fill: false
-        });
-      }
+      datasets.push({
+        label: pr,
+        data: data,
+        _isForecast: isForecast,
+        borderColor: color,
+        backgroundColor: color + '20',
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: data.map((v, idx) => v !== null ? (isForecast[idx] ? 4 : 3) : 0),
+        pointStyle: data.map((v, idx) => isForecast[idx] ? 'triangle' : 'circle'),
+        fill: false,
+        spanGaps: true,
+        segment: {
+          borderDash: (ctx) => {
+            const nextIdx = ctx.p1DataIndex;
+            return ctx.dataset._isForecast[nextIdx] ? [6, 4] : [];
+          }
+        }
+      });
     });
 
     if (datasets.length === 0) {
@@ -3945,7 +3970,7 @@
     createChart('admin-avf-trend-chart', {
       type: 'line',
       data: {
-        labels: allWeeks,
+        labels: avfWeeks,
         datasets: datasets
       },
       options: {
@@ -3959,7 +3984,12 @@
         plugins: {
           legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
           tooltip: {
-            callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}%` }
+            callbacks: {
+              label: (ctx) => {
+                const type = ctx.dataset._isForecast[ctx.dataIndex] ? 'forecast' : 'actual';
+                return `${ctx.dataset.label}: ${ctx.raw}% (${type})`;
+              }
+            }
           }
         }
       }
