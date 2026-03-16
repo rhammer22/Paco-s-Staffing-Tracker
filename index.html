@@ -2729,51 +2729,67 @@
       destroyChart('my-trend-chart');
     }
 
-    // My Actual vs Forecast (continuous line: solid=actual, dashed=forecast)
+    // My Actual vs Forecast (continuous line: solid=actual, dashed→forecast)
+    // Two datasets per project: solid for actuals, dashed for forecast.
+    // The forecast line starts at the last actual point so lines connect visually.
     const cw = getCurrentWeek();
     const nw = getNextWeek(cw);
-    // Build timeline: all actual weeks + next week for forecast
     const avfWeeks = [...new Set([...allWeeks, nw])].sort();
-    // Find the index of the last actual week (current week) — segments after this are forecast
-    const cwIdx = avfWeeks.indexOf(cw);
 
     const forecastDatasets = [];
     projects.forEach((pr, i) => {
-      const data = avfWeeks.map(w => {
-        const actual = getEntry(w, currentPerson, pr);
-        const forecast = getForecast(w, currentPerson, pr);
-        // Use actual if it exists, otherwise forecast
-        if (actual > 0) return actual;
-        if (forecast > 0) return forecast;
-        return null; // null = gap in chart
-      });
-      // Track which points are forecast-only
-      const isForecast = avfWeeks.map(w => {
-        return getEntry(w, currentPerson, pr) === 0 && getForecast(w, currentPerson, pr) > 0;
-      });
-      const hasAny = data.some(v => v !== null && v > 0);
-      if (!hasAny) return;
+      // Build actual and forecast values per week
+      const actuals = avfWeeks.map(w => getEntry(w, currentPerson, pr));
+      const fcasts = avfWeeks.map(w => getForecast(w, currentPerson, pr));
+
+      const hasActual = actuals.some(v => v > 0);
+      const hasForecast = fcasts.some(v => v > 0);
+      if (!hasActual && !hasForecast) return;
+
       const color = CHART_COLORS[i % CHART_COLORS.length];
 
-      forecastDatasets.push({
-        label: pr,
-        data: data,
-        _isForecast: isForecast, // store per-dataset for tooltip/segment access
-        borderColor: color,
-        backgroundColor: color + '20',
-        borderWidth: 2,
-        tension: 0.3,
-        pointRadius: data.map((v, idx) => v !== null ? (isForecast[idx] ? 4 : 3) : 0),
-        pointStyle: data.map((v, idx) => isForecast[idx] ? 'triangle' : 'circle'),
-        fill: false,
-        spanGaps: true,
-        segment: {
-          borderDash: (ctx) => {
-            const nextIdx = ctx.p1DataIndex;
-            return ctx.dataset._isForecast[nextIdx] ? [6, 4] : [];
-          }
+      // Find the last week index with actual data for this project
+      let lastActualIdx = -1;
+      actuals.forEach((v, idx) => { if (v > 0) lastActualIdx = idx; });
+
+      if (hasActual) {
+        forecastDatasets.push({
+          label: pr,
+          data: actuals.map((v, idx) => v > 0 ? v : null),
+          borderColor: color,
+          backgroundColor: color + '20',
+          borderWidth: 2,
+          tension: 0.3,
+          pointRadius: 3,
+          fill: false,
+          spanGaps: false
+        });
+      }
+
+      if (hasForecast) {
+        // Build forecast data that starts at the last actual point (for line continuity)
+        const fData = avfWeeks.map((w, idx) => {
+          if (idx === lastActualIdx && lastActualIdx >= 0) return actuals[idx]; // bridge point
+          if (fcasts[idx] > 0) return fcasts[idx];
+          return null;
+        });
+        const hasBridgedData = fData.some(v => v !== null);
+        if (hasBridgedData) {
+          forecastDatasets.push({
+            label: hasActual ? pr + ' (forecast)' : pr,
+            data: fData,
+            borderColor: color,
+            backgroundColor: color + '10',
+            borderWidth: 2,
+            borderDash: [6, 4],
+            tension: 0.3,
+            pointRadius: fData.map((v, idx) => (v !== null && idx !== lastActualIdx) ? 4 : 0),
+            pointStyle: 'triangle',
+            fill: false,
+            spanGaps: false
+          });
         }
-      });
+      }
     });
 
     if (forecastDatasets.length > 0) {
@@ -2792,13 +2808,19 @@
             x: { ticks: { font: { size: 10 } }, grid: { display: false } }
           },
           plugins: {
-            legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
+            legend: {
+              position: 'bottom',
+              labels: {
+                font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12,
+                filter: (item) => !item.text.includes('(forecast)')
+              }
+            },
             tooltip: {
               callbacks: {
                 label: (ctx) => {
-                  const idx = ctx.dataIndex;
-                  const type = ctx.dataset._isForecast[idx] ? 'forecast' : 'actual';
-                  return `${ctx.dataset.label}: ${ctx.raw}% (${type})`;
+                  const isFc = ctx.dataset.borderDash && ctx.dataset.borderDash.length > 0;
+                  const base = ctx.dataset.label.replace(' (forecast)', '');
+                  return `${base}: ${ctx.raw}% (${isFc ? 'forecast' : 'actual'})`;
                 }
               }
             }
@@ -3448,11 +3470,15 @@
     const projectSel = $('admin-insight-project');
 
     const weeks = getAllWeeksSorted().reverse();
+    const curWeek = getCurrentWeek();
+    // Default to prior week (the week before the current one)
+    const priorWeek = weeks.find(w => w < curWeek) || weeks[0] || curWeek;
     weekSel.innerHTML = '<option value="all">All Weeks</option>';
     weeks.forEach(w => {
       const opt = document.createElement('option');
       opt.value = w;
       opt.textContent = `${w}  (${getWeekDateRange(w)})`;
+      if (w === priorWeek) opt.selected = true;
       weekSel.appendChild(opt);
     });
 
@@ -3898,12 +3924,11 @@
     });
   }
 
-  // ─── Actual vs Forecast Trend (continuous line: solid→dashed) ───
+  // ─── Actual vs Forecast Trend (solid actual → dashed forecast) ───
   function renderAdminAvfTrend(filteredPeople, filteredProjects) {
     const allWeeks = getAllWeeksSorted();
     const cwk = getCurrentWeek();
     const nwk = getNextWeek(cwk);
-    // Include next week so forecast data has a place on the x-axis
     const avfWeeks = [...new Set([...allWeeks, nwk])].sort();
 
     if (avfWeeks.length === 0 || filteredProjects.length === 0) {
@@ -3914,52 +3939,64 @@
     const datasets = [];
     filteredProjects.forEach((pr, i) => {
       const color = CHART_COLORS[i % CHART_COLORS.length];
+      const pplCount = filteredPeople.length || 1;
 
-      const data = avfWeeks.map(w => {
-        let actualTotal = 0, forecastTotal = 0;
-        filteredPeople.forEach(person => {
-          actualTotal += getEntry(w, person, pr);
-          forecastTotal += getForecast(w, person, pr);
-        });
-        const avg = filteredPeople.length > 0 ? filteredPeople.length : 1;
-        const actualAvg = Math.round(actualTotal / avg);
-        const forecastAvg = Math.round(forecastTotal / avg);
-        if (actualAvg > 0) return actualAvg;
-        if (forecastAvg > 0) return forecastAvg;
-        return null;
+      // Compute avg actual and forecast per week
+      const actuals = avfWeeks.map(w => {
+        let t = 0;
+        filteredPeople.forEach(p => { t += getEntry(w, p, pr); });
+        return Math.round(t / pplCount);
+      });
+      const fcasts = avfWeeks.map(w => {
+        let t = 0;
+        filteredPeople.forEach(p => { t += getForecast(w, p, pr); });
+        return Math.round(t / pplCount);
       });
 
-      const isForecast = avfWeeks.map(w => {
-        let actualTotal = 0, forecastTotal = 0;
-        filteredPeople.forEach(person => {
-          actualTotal += getEntry(w, person, pr);
-          forecastTotal += getForecast(w, person, pr);
+      const hasActual = actuals.some(v => v > 0);
+      const hasForecast = fcasts.some(v => v > 0);
+      if (!hasActual && !hasForecast) return;
+
+      // Find last week with actual data
+      let lastActualIdx = -1;
+      actuals.forEach((v, idx) => { if (v > 0) lastActualIdx = idx; });
+
+      if (hasActual) {
+        datasets.push({
+          label: pr,
+          data: actuals.map(v => v > 0 ? v : null),
+          borderColor: color,
+          backgroundColor: color + '20',
+          borderWidth: 2,
+          tension: 0.3,
+          pointRadius: 3,
+          fill: false,
+          spanGaps: false
         });
-        return actualTotal === 0 && forecastTotal > 0;
-      });
+      }
 
-      const hasAny = data.some(v => v !== null && v > 0);
-      if (!hasAny) return;
-
-      datasets.push({
-        label: pr,
-        data: data,
-        _isForecast: isForecast,
-        borderColor: color,
-        backgroundColor: color + '20',
-        borderWidth: 2,
-        tension: 0.3,
-        pointRadius: data.map((v, idx) => v !== null ? (isForecast[idx] ? 4 : 3) : 0),
-        pointStyle: data.map((v, idx) => isForecast[idx] ? 'triangle' : 'circle'),
-        fill: false,
-        spanGaps: true,
-        segment: {
-          borderDash: (ctx) => {
-            const nextIdx = ctx.p1DataIndex;
-            return ctx.dataset._isForecast[nextIdx] ? [6, 4] : [];
-          }
+      if (hasForecast) {
+        const fData = avfWeeks.map((w, idx) => {
+          if (idx === lastActualIdx && lastActualIdx >= 0) return actuals[idx]; // bridge
+          if (fcasts[idx] > 0) return fcasts[idx];
+          return null;
+        });
+        if (fData.some(v => v !== null)) {
+          datasets.push({
+            label: hasActual ? pr + ' (forecast)' : pr,
+            data: fData,
+            borderColor: color,
+            backgroundColor: color + '10',
+            borderWidth: 2,
+            borderDash: [6, 4],
+            tension: 0.3,
+            pointRadius: fData.map((v, idx) => (v !== null && idx !== lastActualIdx) ? 4 : 0),
+            pointStyle: 'triangle',
+            fill: false,
+            spanGaps: false
+          });
         }
-      });
+      }
     });
 
     if (datasets.length === 0) {
@@ -3982,12 +4019,19 @@
           x: { ticks: { font: { size: 10 } }, grid: { display: false } }
         },
         plugins: {
-          legend: { position: 'bottom', labels: { font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12 } },
+          legend: {
+            position: 'bottom',
+            labels: {
+              font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12,
+              filter: (item) => !item.text.includes('(forecast)')
+            }
+          },
           tooltip: {
             callbacks: {
               label: (ctx) => {
-                const type = ctx.dataset._isForecast[ctx.dataIndex] ? 'forecast' : 'actual';
-                return `${ctx.dataset.label}: ${ctx.raw}% (${type})`;
+                const isFc = ctx.dataset.borderDash && ctx.dataset.borderDash.length > 0;
+                const base = ctx.dataset.label.replace(' (forecast)', '');
+                return `${base}: ${ctx.raw}% (${isFc ? 'forecast' : 'actual'})`;
               }
             }
           }
