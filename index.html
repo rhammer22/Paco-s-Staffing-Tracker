@@ -1067,6 +1067,84 @@
     vertical-align: middle;
   }
 
+  .chart-local-filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .chart-local-filters select {
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text);
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    background: var(--color-bg);
+    cursor: pointer;
+  }
+
+  .chart-local-filters select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+
+  .chart-local-filters label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .notable-changes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .notable-change-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--color-text);
+    border-radius: var(--radius-sm);
+  }
+
+  .notable-change-row:nth-child(odd) {
+    background: var(--color-bg);
+  }
+
+  .notable-change-row:nth-child(even) {
+    background: transparent;
+  }
+
+  .notable-change-icon {
+    flex-shrink: 0;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .notable-change-text {
+    flex: 1;
+  }
+
+  .notable-changes-empty {
+    font-size: 13px;
+    color: var(--color-text-muted);
+    padding: 12px;
+    text-align: center;
+  }
+
   .insight-filters {
     display: flex;
     gap: 12px;
@@ -1731,10 +1809,19 @@
         <canvas id="my-trend-chart" data-testid="my-trend-chart"></canvas>
       </div>
     </div>
+    <!-- My Notable Changes -->
+    <div class="insight-card" data-testid="my-notable-changes-card">
+      <div class="insight-card-title">Notable Changes</div>
+      <div class="insight-card-subtitle">Auto-detected highlights from the current period</div>
+      <div id="my-notable-changes-content"></div>
+    </div>
     <!-- My Actual vs Forecast -->
     <div class="insight-card" data-testid="my-forecast-card">
       <div class="insight-card-title">My Actual vs Forecast</div>
       <div class="insight-card-subtitle">Each line shows one project — solid for logged actuals, then dashed where it shifts to forecast</div>
+      <div class="chart-local-filters" id="my-avf-filters">
+        <label>Project <select id="my-avf-project-filter"></select></label>
+      </div>
       <div class="chart-container">
         <canvas id="my-forecast-chart" data-testid="my-forecast-chart"></canvas>
       </div>
@@ -1835,6 +1922,13 @@
         <div id="admin-not-logged-content"></div>
       </div>
 
+      <!-- Notable Changes -->
+      <div class="insight-card" data-testid="admin-notable-changes-card">
+        <div class="insight-card-title">Notable Changes</div>
+        <div class="insight-card-subtitle">Auto-detected highlights from the current period</div>
+        <div id="admin-notable-changes-content"></div>
+      </div>
+
       <!-- Person Breakdown + Project Share -->
       <div class="insights-grid">
         <div class="insight-card" data-testid="admin-breakdown-card">
@@ -1874,6 +1968,10 @@
       <div class="insight-card" style="margin-top:16px" data-testid="admin-avf-trend-card">
         <div class="insight-card-title">Actual vs Forecast Trend</div>
         <div class="insight-card-subtitle">Each line shows one project — solid for logged actuals, then dashed where it shifts to forecast</div>
+        <div class="chart-local-filters" id="admin-avf-filters">
+          <label>Person <select id="admin-avf-person-filter"></select></label>
+          <label>Project <select id="admin-avf-project-filter"></select></label>
+        </div>
         <div class="chart-container">
           <canvas id="admin-avf-trend-chart" data-testid="admin-avf-trend-chart"></canvas>
         </div>
@@ -2200,6 +2298,150 @@
       return CHART_COLORS.map(c => c + '99');
     }
     return CHART_COLORS;
+  }
+
+  // ─── Notable Changes Generator ───
+  function generateNotableChanges(week, people, projects, singlePerson) {
+    const insights = [];
+    if (!appData || !week || week === 'all') return insights;
+
+    const allWeeks = getAllWeeksSorted();
+    const weekIdx = allWeeks.indexOf(week);
+    const prevWeek = weekIdx > 0 ? allWeeks[weekIdx - 1] : null;
+    const effectivePeople = singlePerson ? [singlePerson] : (people || []);
+    const effectiveProjects = projects || appData.projects || [];
+
+    // 1. Week-over-week project total change
+    if (prevWeek) {
+      effectiveProjects.forEach(pr => {
+        let curTotal = 0, prevTotal = 0;
+        effectivePeople.forEach(p => {
+          curTotal += getEntry(week, p, pr);
+          prevTotal += getEntry(prevWeek, p, pr);
+        });
+        const avg = effectivePeople.length || 1;
+        const curAvg = Math.round(curTotal / avg);
+        const prevAvg = Math.round(prevTotal / avg);
+        if (prevAvg > 0) {
+          const changePct = Math.round(((curAvg - prevAvg) / prevAvg) * 100);
+          if (Math.abs(changePct) >= 15) {
+            const icon = changePct > 0 ? '\u{1F4C8}' : '\u{1F4C9}';
+            const dir = changePct > 0 ? 'up' : 'down';
+            insights.push({ icon, text: `${pr} went ${dir} ${Math.abs(changePct)}% this week (avg ${prevAvg}% \u2192 ${curAvg}%)`, score: Math.abs(changePct) });
+          }
+        }
+      });
+    }
+
+    // 2. Person vs their historical average
+    if (allWeeks.length >= 3) {
+      effectivePeople.forEach(person => {
+        effectiveProjects.forEach(pr => {
+          const curVal = getEntry(week, person, pr);
+          const historicalWeeks = allWeeks.filter(w => w !== week);
+          const vals = historicalWeeks.map(w => getEntry(w, person, pr)).filter(v => v > 0);
+          if (vals.length >= 2 && curVal > 0) {
+            const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+            if (avg > 0) {
+              const diffPct = Math.round(((curVal - avg) / avg) * 100);
+              if (Math.abs(diffPct) >= 40) {
+                const icon = diffPct > 0 ? '\u{1F4C8}' : '\u{1F4C9}';
+                const dir = diffPct > 0 ? 'more' : 'less';
+                insights.push({ icon, text: `${person} spent ${Math.abs(diffPct)}% ${dir} time on ${pr} than their average`, score: Math.abs(diffPct) });
+              }
+            }
+          }
+        });
+      });
+    }
+
+    // 3. Biggest shift between projects (person moved allocation)
+    if (prevWeek) {
+      effectivePeople.forEach(person => {
+        let biggestUp = null, biggestDown = null;
+        effectiveProjects.forEach(pr => {
+          const cur = getEntry(week, person, pr);
+          const prev = getEntry(prevWeek, person, pr);
+          const diff = cur - prev;
+          if (diff > 0 && (!biggestUp || diff > biggestUp.diff)) biggestUp = { pr, diff, cur, prev };
+          if (diff < 0 && (!biggestDown || diff < biggestDown.diff)) biggestDown = { pr, diff, cur, prev };
+        });
+        if (biggestUp && biggestDown && biggestUp.diff >= 10 && Math.abs(biggestDown.diff) >= 10) {
+          insights.push({ icon: '\u{1F504}', text: `${person} shifted ${Math.abs(biggestDown.diff)}% from ${biggestDown.pr} to ${biggestUp.pr}`, score: biggestUp.diff + Math.abs(biggestDown.diff) });
+        }
+      });
+    }
+
+    // 4. New allocation (0 → >0)
+    if (prevWeek) {
+      effectivePeople.forEach(person => {
+        effectiveProjects.forEach(pr => {
+          const cur = getEntry(week, person, pr);
+          const prev = getEntry(prevWeek, person, pr);
+          if (prev === 0 && cur > 0) {
+            insights.push({ icon: '\u{1F195}', text: `${person} started working on ${pr} this week (${cur}%)`, score: cur + 20 });
+          }
+        });
+      });
+    }
+
+    // 5. Dropped project (>0 → 0)
+    if (prevWeek) {
+      effectivePeople.forEach(person => {
+        effectiveProjects.forEach(pr => {
+          const cur = getEntry(week, person, pr);
+          const prev = getEntry(prevWeek, person, pr);
+          if (prev > 0 && cur === 0) {
+            insights.push({ icon: '\u{1F504}', text: `${person} stopped working on ${pr} this week`, score: prev + 15 });
+          }
+        });
+      });
+    }
+
+    // 6. Highest concentration (>= 75% on one project)
+    effectivePeople.forEach(person => {
+      const total = getPersonTotal(week, person);
+      if (total <= 0) return;
+      effectiveProjects.forEach(pr => {
+        const val = getEntry(week, person, pr);
+        const pct = Math.round((val / total) * 100);
+        if (pct >= 75) {
+          insights.push({ icon: '\u26A0\uFE0F', text: `${person} is spending ${pct}% of time on a single project (${pr})`, score: pct });
+        }
+      });
+    });
+
+    // 7. Forecast vs Actual divergence
+    effectivePeople.forEach(person => {
+      effectiveProjects.forEach(pr => {
+        const actual = getEntry(week, person, pr);
+        const forecast = getForecast(week, person, pr);
+        if (forecast > 0 && actual > 0) {
+          const gap = Math.abs(actual - forecast);
+          if (gap >= 15) {
+            const dir = actual > forecast ? 'higher' : 'lower';
+            insights.push({ icon: '\u26A0\uFE0F', text: `${person}'s actual for ${pr} was ${gap}% ${dir} than forecast (${forecast}% forecast vs ${actual}% actual)`, score: gap + 10 });
+          }
+        }
+      });
+    });
+
+    // Sort by score descending, return top 5
+    insights.sort((a, b) => b.score - a.score);
+    return insights.slice(0, 5).map(i => ({ icon: i.icon, text: i.text }));
+  }
+
+  function renderNotableChangesHTML(containerId, changes) {
+    const container = $(containerId);
+    if (!container) return;
+    if (!changes || changes.length === 0) {
+      container.innerHTML = '<div class="notable-changes-empty">No notable changes for this period</div>';
+      return;
+    }
+    container.innerHTML = '<div class="notable-changes-list">' +
+      changes.map(c =>
+        `<div class="notable-change-row"><span class="notable-change-icon">${c.icon}</span><span class="notable-change-text">${c.text}</span></div>`
+      ).join('') + '</div>';
   }
 
   function showToast(msg) {
@@ -2813,6 +3055,10 @@
       </div>
     `;
 
+    // My Notable Changes
+    const myChanges = generateNotableChanges(weekVal, null, projects, currentPerson);
+    renderNotableChangesHTML('my-notable-changes-content', myChanges);
+
     // My Time Split (Pie/Doughnut)
     const pieData = projects.map((pr, i) => {
       let value;
@@ -2899,16 +3145,38 @@
       destroyChart('my-trend-chart');
     }
 
-    // My Actual vs Forecast (continuous line: solid=actual, dashed→forecast)
-    // Two datasets per project: solid for actuals, dashed for forecast.
-    // The forecast line starts at the last actual point so lines connect visually.
+    // My Actual vs Forecast — populate local project filter
+    const myAvfProjectFilter = $('my-avf-project-filter');
+    const prevMyAvfProject = myAvfProjectFilter.value;
+    myAvfProjectFilter.innerHTML = '<option value="all">All</option>';
+    projects.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      if (p === prevMyAvfProject) opt.selected = true;
+      myAvfProjectFilter.appendChild(opt);
+    });
+    if (!myAvfProjectFilter._avfBound) {
+      myAvfProjectFilter.addEventListener('change', () => renderMyAvfChart());
+      myAvfProjectFilter._avfBound = true;
+    }
+    myAvfProjectFilter._allProjects = projects;
+
+    renderMyAvfChart();
+  }
+
+  function renderMyAvfChart() {
+    const myAvfProjectFilter = $('my-avf-project-filter');
+    const allProjects = myAvfProjectFilter._allProjects || appData.projects || [];
+    const localProject = myAvfProjectFilter.value || 'all';
+    const effectiveProjects = localProject === 'all' ? allProjects : allProjects.filter(p => p === localProject);
+
+    const allWeeks = getAllWeeksSorted();
     const cw = getCurrentWeek();
     const nw = getNextWeek(cw);
     const avfWeeks = [...new Set([...allWeeks, nw])].sort();
 
     const forecastDatasets = [];
-    projects.forEach((pr, i) => {
-      // Build actual and forecast values per week
+    effectiveProjects.forEach((pr, i) => {
       const actuals = avfWeeks.map(w => getEntry(w, currentPerson, pr));
       const fcasts = avfWeeks.map(w => getForecast(w, currentPerson, pr));
 
@@ -2918,7 +3186,6 @@
 
       const color = CHART_COLORS[i % CHART_COLORS.length];
 
-      // Find the last week index with actual data for this project
       let lastActualIdx = -1;
       actuals.forEach((v, idx) => { if (v > 0) lastActualIdx = idx; });
 
@@ -2937,7 +3204,6 @@
       }
 
       if (hasForecast) {
-        // Build forecast data that starts at the last actual point (for line continuity)
         const fData = avfWeeks.map((w, idx) => {
           if (idx === lastActualIdx && lastActualIdx >= 0) return actuals[idx]; // bridge point
           if (fcasts[idx] > 0) return fcasts[idx];
@@ -3711,6 +3977,8 @@
 
     renderAdminUtilization(selectedWeek, filteredPeople, mode);
     renderAdminNotLogged(selectedWeek, people, mode);
+    const adminChanges = generateNotableChanges(selectedWeek, filteredPeople, filteredProjects, null);
+    renderNotableChangesHTML('admin-notable-changes-content', adminChanges);
     renderAdminBreakdown(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminPieChart(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminProjectStaffing(selectedWeek, filteredPeople, filteredProjects, mode);
@@ -4105,30 +4373,83 @@
 
   // ─── Actual vs Forecast Trend (solid actual → dashed forecast) ───
   function renderAdminAvfTrend(filteredPeople, filteredProjects) {
+    // Populate local filter dropdowns
+    const personFilter = $('admin-avf-person-filter');
+    const projectFilter = $('admin-avf-project-filter');
+    const allPeople = appData.people || [];
+    const allProjects = appData.projects || [];
+
+    const prevPerson = personFilter.value;
+    const prevProject = projectFilter.value;
+
+    personFilter.innerHTML = '<option value="all">All</option>';
+    allPeople.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      if (p === prevPerson) opt.selected = true;
+      personFilter.appendChild(opt);
+    });
+
+    projectFilter.innerHTML = '<option value="all">All</option>';
+    allProjects.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p; opt.textContent = p;
+      if (p === prevProject) opt.selected = true;
+      projectFilter.appendChild(opt);
+    });
+
+    // Wire up change events (only once)
+    if (!personFilter._avfBound) {
+      personFilter.addEventListener('change', () => renderAdminAvfTrendChart());
+      personFilter._avfBound = true;
+    }
+    if (!projectFilter._avfBound) {
+      projectFilter.addEventListener('change', () => renderAdminAvfTrendChart());
+      projectFilter._avfBound = true;
+    }
+
+    // Store context for re-renders from local filters
+    personFilter._globalPeople = filteredPeople;
+    personFilter._globalProjects = filteredProjects;
+
+    renderAdminAvfTrendChart();
+  }
+
+  function renderAdminAvfTrendChart() {
+    const personFilter = $('admin-avf-person-filter');
+    const projectFilter = $('admin-avf-project-filter');
+    const globalPeople = personFilter._globalPeople || appData.people || [];
+    const globalProjects = personFilter._globalProjects || appData.projects || [];
+
+    const localPerson = personFilter.value || 'all';
+    const localProject = projectFilter.value || 'all';
+
+    const effectivePeople = localPerson === 'all' ? globalPeople : globalPeople.filter(p => p === localPerson);
+    const effectiveProjects = localProject === 'all' ? globalProjects : globalProjects.filter(p => p === localProject);
+
     const allWeeks = getAllWeeksSorted();
     const cwk = getCurrentWeek();
     const nwk = getNextWeek(cwk);
     const avfWeeks = [...new Set([...allWeeks, nwk])].sort();
 
-    if (avfWeeks.length === 0 || filteredProjects.length === 0) {
+    if (avfWeeks.length === 0 || effectiveProjects.length === 0) {
       destroyChart('admin-avf-trend-chart');
       return;
     }
 
     const datasets = [];
-    filteredProjects.forEach((pr, i) => {
+    effectiveProjects.forEach((pr, i) => {
       const color = CHART_COLORS[i % CHART_COLORS.length];
-      const pplCount = filteredPeople.length || 1;
+      const pplCount = effectivePeople.length || 1;
 
-      // Compute avg actual and forecast per week
       const actuals = avfWeeks.map(w => {
         let t = 0;
-        filteredPeople.forEach(p => { t += getEntry(w, p, pr); });
+        effectivePeople.forEach(p => { t += getEntry(w, p, pr); });
         return Math.round(t / pplCount);
       });
       const fcasts = avfWeeks.map(w => {
         let t = 0;
-        filteredPeople.forEach(p => { t += getForecast(w, p, pr); });
+        effectivePeople.forEach(p => { t += getForecast(w, p, pr); });
         return Math.round(t / pplCount);
       });
 
@@ -4136,7 +4457,6 @@
       const hasForecast = fcasts.some(v => v > 0);
       if (!hasActual && !hasForecast) return;
 
-      // Find last week with actual data
       let lastActualIdx = -1;
       actuals.forEach((v, idx) => { if (v > 0) lastActualIdx = idx; });
 
