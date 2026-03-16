@@ -515,6 +515,81 @@
     letter-spacing: -0.01em;
   }
 
+  /* Easter Egg list items */
+  .ee-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--color-bg-card, #f9fafb);
+    border-radius: 8px;
+    border: 1px solid var(--color-border, #e5e7eb);
+  }
+  .ee-trigger {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--color-primary, #1e3a5f);
+    min-width: 110px;
+    flex-shrink: 0;
+  }
+  .ee-desc {
+    font-size: 12px;
+    color: var(--color-text-secondary, #6b7280);
+    line-height: 1.4;
+  }
+  .ee-desc kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    font-size: 11px;
+    font-family: monospace;
+    background: #e5e7eb;
+    border-radius: 3px;
+    border: 1px solid #d1d5db;
+  }
+
+  /* Activity Log items */
+  .log-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-border, #e5e7eb);
+    font-size: 13px;
+  }
+  .log-entry:last-child { border-bottom: none; }
+  .log-time {
+    font-size: 11px;
+    color: var(--color-text-muted, #9ca3af);
+    min-width: 120px;
+    flex-shrink: 0;
+    line-height: 1.5;
+  }
+  .log-user {
+    font-weight: 600;
+    color: var(--color-primary, #1e3a5f);
+    min-width: 130px;
+    flex-shrink: 0;
+  }
+  .log-detail {
+    color: var(--color-text-secondary, #374151);
+    line-height: 1.4;
+  }
+  .log-action {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-right: 6px;
+  }
+  .log-action.save { background: #d1fae5; color: #065f46; }
+  .log-action.add { background: #dbeafe; color: #1e40af; }
+  .log-action.remove { background: #fee2e2; color: #991b1b; }
+  .log-action.rename { background: #fef3c7; color: #92400e; }
+  .log-action.import { background: #e0e7ff; color: #3730a3; }
+
   .admin-list-item {
     display: flex;
     align-items: center;
@@ -1687,6 +1762,8 @@
   <div class="admin-tabs" data-testid="admin-tabs">
     <button class="admin-tab-btn" data-tab="all-entries" data-testid="tab-all-entries">All Entries</button>
     <button class="admin-tab-btn active" data-tab="insights" data-testid="tab-insights">Insights</button>
+    <button class="admin-tab-btn" data-tab="activity-log" data-testid="tab-activity-log">Activity Log</button>
+    <button class="admin-tab-btn" data-tab="easter-eggs" data-testid="tab-easter-eggs">Easter Eggs</button>
     <button class="admin-tab-btn" data-tab="setup" data-testid="tab-setup">Setup</button>
   </div>
 
@@ -1819,7 +1896,38 @@
       </div>
     </div>
 
-    <!-- Tab 3: Setup -->
+    <!-- Tab 3: Activity Log -->
+    <div class="admin-tab-panel" id="panel-activity-log" data-testid="panel-activity-log">
+      <div class="admin-section">
+        <div class="admin-section-title">Activity Log</div>
+        <p style="font-size:12px;color:var(--color-text-muted);margin:0 0 12px;">All user changes are logged automatically. Most recent first.</p>
+        <div id="activity-log-list" data-testid="activity-log-list" style="max-height:600px;overflow-y:auto;"></div>
+        <div id="activity-log-empty" style="padding:24px;text-align:center;color:var(--color-text-muted);font-size:13px;">No changes recorded yet.</div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Easter Eggs -->
+    <div class="admin-tab-panel" id="panel-easter-eggs" data-testid="panel-easter-eggs">
+      <div class="admin-section">
+        <div class="admin-section-title">Easter Eggs</div>
+        <p style="font-size:12px;color:var(--color-text-muted);margin:0 0 12px;">11 hidden surprises are scattered throughout the app. Can you find them all?</p>
+        <div style="display:flex;flex-direction:column;gap:8px;" id="easter-egg-list">
+          <div class="ee-item"><span class="ee-trigger">Konami Code</span><span class="ee-desc">Type <kbd>&uarr;&uarr;&darr;&darr;&larr;&rarr;&larr;&rarr;BA</kbd> anywhere &rarr; party mode with confetti</span></div>
+          <div class="ee-item"><span class="ee-trigger">Logo Tap x5</span><span class="ee-desc">Click the login logo 5 times &rarr; wink + secret message</span></div>
+          <div class="ee-item"><span class="ee-trigger">Taco Rain</span><span class="ee-desc">Type your name as &ldquo;Taco&rdquo; (or any name containing it) &rarr; tacos fall from the sky</span></div>
+          <div class="ee-item"><span class="ee-trigger">Dark Mode</span><span class="ee-desc">Triple-click the header title &rarr; toggle dark mode</span></div>
+          <div class="ee-item"><span class="ee-trigger">Perfect 100%</span><span class="ee-desc">Save your hours totaling exactly 100% &rarr; confetti burst</span></div>
+          <div class="ee-item"><span class="ee-trigger">Friday Vibes</span><span class="ee-desc">Save your hours on a Friday after 4pm &rarr; weekend message</span></div>
+          <div class="ee-item"><span class="ee-trigger">Matrix Rain</span><span class="ee-desc">Type &ldquo;matrix&rdquo; in any password field &rarr; green character rain</span></div>
+          <div class="ee-item"><span class="ee-trigger">Credits Roll</span><span class="ee-desc">Click &ldquo;Created with Perplexity Computer&rdquo; in the footer 7 times &rarr; movie-style credits</span></div>
+          <div class="ee-item"><span class="ee-trigger">Over 9000</span><span class="ee-desc">Type a value greater than 9000 in any percentage input &rarr; power-up shake</span></div>
+          <div class="ee-item"><span class="ee-trigger">Rainbow Mode</span><span class="ee-desc">Type &ldquo;rainbow&rdquo; in any password field &rarr; full-page rainbow cycling</span></div>
+          <div class="ee-item"><span class="ee-trigger">Gravity Drop</span><span class="ee-desc">Long-press any project name for 3 seconds &rarr; all numbers fall and bounce back</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 5: Setup -->
     <div class="admin-tab-panel" id="panel-setup" data-testid="panel-setup">
       <!-- People Management -->
       <div class="admin-section">
@@ -2100,6 +2208,46 @@
     setTimeout(() => toast.classList.remove('show'), 2500);
   }
 
+  // ─── Activity Log ───
+  function logChange(action, detail) {
+    if (!appData) return;
+    if (!appData.changelog) appData.changelog = [];
+    appData.changelog.push({
+      time: new Date().toISOString(),
+      user: currentPerson || 'Admin',
+      action: action,
+      detail: detail
+    });
+    // Keep last 200 entries to avoid bloating the database
+    if (appData.changelog.length > 200) {
+      appData.changelog = appData.changelog.slice(-200);
+    }
+  }
+
+  function renderActivityLog() {
+    const list = $('activity-log-list');
+    const empty = $('activity-log-empty');
+    if (!list) return;
+    const log = (appData && appData.changelog) ? [...appData.changelog].reverse() : [];
+    if (log.length === 0) {
+      list.innerHTML = '';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    list.innerHTML = log.map(entry => {
+      const d = new Date(entry.time);
+      const timeStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                      d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      const actionClass = (entry.action || '').toLowerCase().replace(/[^a-z]/g, '');
+      return `<div class="log-entry">
+        <span class="log-time">${timeStr}</span>
+        <span class="log-user">${entry.user || 'Unknown'}</span>
+        <span class="log-detail"><span class="log-action ${actionClass}">${entry.action}</span>${entry.detail}</span>
+      </div>`;
+    }).join('');
+  }
+
   function showLoading(show) {
     loading.classList.toggle('active', show);
   }
@@ -2223,7 +2371,11 @@
   // ─── Login Screen ───
   function renderLoginScreen() {
     personButtons.innerHTML = '';
-    const people = appData.people || [];
+    const people = [...(appData.people || [])].sort((a, b) => {
+      const lastA = a.trim().split(/\s+/).pop().toLowerCase();
+      const lastB = b.trim().split(/\s+/).pop().toLowerCase();
+      return lastA.localeCompare(lastB) || a.localeCompare(b);
+    });
     people.forEach((name) => {
       const btn = document.createElement('button');
       btn.className = 'person-btn';
@@ -2504,6 +2656,24 @@
           delete freshData.forecasts[key];
         }
       });
+
+      // Log the change
+      if (!freshData.changelog) freshData.changelog = [];
+      const savedActuals = [];
+      actualInputs.forEach(inp => {
+        const v = parseInt(inp.value) || 0;
+        if (v > 0) savedActuals.push(inp.getAttribute('data-project') + ' ' + v + '%');
+      });
+      const savedForecasts = [];
+      forecastInputs.forEach(inp => {
+        const v = parseInt(inp.value) || 0;
+        if (v > 0) savedForecasts.push(inp.getAttribute('data-project') + ' ' + v + '%');
+      });
+      let logDetail = `Saved hours for ${currentWeek}`;
+      if (savedActuals.length) logDetail += ` — Actuals: ${savedActuals.join(', ')}`;
+      if (savedForecasts.length) logDetail += ` | Forecast (${nextWeek}): ${savedForecasts.join(', ')}`;
+      freshData.changelog.push({ time: new Date().toISOString(), user: currentPerson || 'Unknown', action: 'Save', detail: logDetail });
+      if (freshData.changelog.length > 200) freshData.changelog = freshData.changelog.slice(-200);
 
       await saveFullData(freshData);
       appData = freshData;
@@ -2940,6 +3110,8 @@
 
       if (tabId === 'insights') {
         renderAdminInsights();
+      } else if (tabId === 'activity-log') {
+        renderActivityLog();
       }
     });
   });
@@ -3014,6 +3186,7 @@
         if (idx > -1) appData.people[idx] = trimmed;
         renameInData(name, trimmed, 'person');
         if (currentPerson === name) currentPerson = trimmed;
+        logChange('Rename', `Renamed person "${name}" to "${trimmed}"`);
         showLoading(true);
         try {
           await saveFullData(appData);
@@ -3033,6 +3206,7 @@
       removeBtn.addEventListener('click', async () => {
         if (!confirm(`Remove ${name}?`)) return;
         appData.people = appData.people.filter(p => p !== name);
+        logChange('Remove', `Removed person "${name}"`);
         showLoading(true);
         try {
           await saveFullData(appData);
@@ -3077,6 +3251,7 @@
         const idx = appData.projects.indexOf(proj);
         if (idx > -1) appData.projects[idx] = trimmed;
         renameInData(proj, trimmed, 'project');
+        logChange('Rename', `Renamed project "${proj}" to "${trimmed}"`);
         showLoading(true);
         try {
           await saveFullData(appData);
@@ -3096,6 +3271,7 @@
       removeBtn.addEventListener('click', async () => {
         if (!confirm(`Remove ${proj}?`)) return;
         appData.projects = appData.projects.filter(p => p !== proj);
+        logChange('Remove', `Removed project "${proj}"`);
         showLoading(true);
         try {
           await saveFullData(appData);
@@ -3123,6 +3299,7 @@
       return;
     }
     appData.people.push(name);
+    logChange('Add', `Added person "${name}"`);
     addPersonInput.value = '';
     showLoading(true);
     try {
@@ -3148,6 +3325,7 @@
       return;
     }
     appData.projects.push(name);
+    logChange('Add', `Added project "${name}"`);
     addProjectInput.value = '';
     showLoading(true);
     try {
@@ -3445,6 +3623,7 @@
       if (forecast > 0) appData.forecasts[key] = forecast;
     });
 
+    logChange('Import', `Imported ${pendingImportData.length} entries from Excel file`);
     try {
       await saveFullData(appData);
       showToast(`Imported ${pendingImportData.length} entries successfully`);
