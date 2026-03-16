@@ -945,6 +945,53 @@
     margin-bottom: 16px;
   }
 
+  .data-mode-toggle {
+    display: flex;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 3px;
+    margin: 16px 20px 0;
+    width: fit-content;
+  }
+
+  .mode-btn {
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 20px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: all 150ms ease;
+  }
+
+  .mode-btn.active {
+    background: var(--color-accent);
+    color: white;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+  }
+
+  .mode-btn[data-mode="forecast"].active {
+    background: var(--color-forecast);
+  }
+
+  .forecast-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: var(--color-forecast-light);
+    color: var(--color-forecast);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
   .insight-filters {
     display: flex;
     gap: 12px;
@@ -1674,6 +1721,11 @@
 
     <!-- Tab 2: Insights -->
     <div class="admin-tab-panel active" id="panel-insights" data-testid="panel-insights">
+      <!-- Data Mode Toggle -->
+      <div class="data-mode-toggle">
+        <button class="mode-btn active" data-mode="actual">Actual</button>
+        <button class="mode-btn" data-mode="forecast">Forecast</button>
+      </div>
       <!-- Filters -->
       <div class="insight-filters">
         <div class="insight-filter-group">
@@ -1710,12 +1762,14 @@
       <div class="insights-grid">
         <div class="insight-card" data-testid="admin-breakdown-card">
           <div class="insight-card-title">Person Breakdown</div>
+          <div class="insight-card-subtitle">Each bar shows how a person splits their time across projects (normalized to 100%)</div>
           <div class="chart-container">
             <canvas id="admin-breakdown-chart" data-testid="admin-breakdown-chart"></canvas>
           </div>
         </div>
         <div class="insight-card" data-testid="admin-pie-card">
           <div class="insight-card-title">Project Share</div>
+          <div class="insight-card-subtitle">Total hours allocated to each project across the team</div>
           <div class="chart-container">
             <canvas id="admin-pie-chart" data-testid="admin-pie-chart"></canvas>
           </div>
@@ -1725,7 +1779,7 @@
       <!-- Project Staffing -->
       <div class="insight-card" style="margin-top:16px" data-testid="admin-project-staffing-card">
         <div class="insight-card-title">Project Staffing</div>
-        <div class="insight-card-subtitle">Who's putting time into each project</div>
+        <div class="insight-card-subtitle">Each bar shows the share of effort each person contributes to a project (normalized to 100%)</div>
         <div class="chart-container">
           <canvas id="admin-project-staffing-chart" data-testid="admin-project-staffing-chart"></canvas>
         </div>
@@ -1898,6 +1952,7 @@
   let currentPerson = null;
   let currentWeek = null;
   let activeAdminTab = 'insights';
+  let adminDataMode = 'actual'; // 'actual' or 'forecast'
 
   // Chart instances (so we can destroy before re-creating)
   let chartInstances = {};
@@ -2017,6 +2072,26 @@
       total += getForecast(week, person, proj);
     });
     return total;
+  }
+
+  function getDataByMode(week, person, project, mode) {
+    if (mode === 'forecast') return getForecast(week, person, project);
+    return getEntry(week, person, project);
+  }
+
+  function getPersonTotalByMode(week, person, mode) {
+    let total = 0;
+    (appData.projects || []).forEach(proj => {
+      total += getDataByMode(week, person, proj, mode);
+    });
+    return total;
+  }
+
+  function getMutedColors(mode) {
+    if (mode === 'forecast') {
+      return CHART_COLORS.map(c => c + '99');
+    }
+    return CHART_COLORS;
   }
 
   function showToast(msg) {
@@ -2832,6 +2907,16 @@
     });
   });
 
+  // ─── Data Mode Toggle ───
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      adminDataMode = btn.getAttribute('data-mode');
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderAdminInsights();
+    });
+  });
+
   // ─── Admin Render ───
   function renderAdmin() {
     renderAdminPeople();
@@ -3384,24 +3469,38 @@
     const selectedWeek = $('admin-insight-week').value || getCurrentWeek();
     const selectedPerson = $('admin-insight-person').value || 'all';
     const selectedProject = $('admin-insight-project').value || 'all';
+    const mode = adminDataMode;
 
     const people = appData.people || [];
     const projects = appData.projects || [];
     const filteredPeople = selectedPerson === 'all' ? people : people.filter(p => p === selectedPerson);
     const filteredProjects = selectedProject === 'all' ? projects : projects.filter(p => p === selectedProject);
 
-    renderAdminUtilization(selectedWeek, filteredPeople);
-    renderAdminNotLogged(selectedWeek, people);
-    renderAdminBreakdown(selectedWeek, filteredPeople, filteredProjects);
-    renderAdminPieChart(selectedWeek, filteredPeople, filteredProjects);
-    renderAdminProjectStaffing(selectedWeek, filteredPeople, filteredProjects);
+    // Add/remove forecast badges on card titles
+    document.querySelectorAll('#panel-insights .insight-card-title .forecast-badge').forEach(b => b.remove());
+    if (mode === 'forecast') {
+      document.querySelectorAll('#panel-insights .insight-card-title').forEach(title => {
+        if (!title.querySelector('.forecast-badge')) {
+          const badge = document.createElement('span');
+          badge.className = 'forecast-badge';
+          badge.textContent = 'Forecast';
+          title.appendChild(badge);
+        }
+      });
+    }
+
+    renderAdminUtilization(selectedWeek, filteredPeople, mode);
+    renderAdminNotLogged(selectedWeek, people, mode);
+    renderAdminBreakdown(selectedWeek, filteredPeople, filteredProjects, mode);
+    renderAdminPieChart(selectedWeek, filteredPeople, filteredProjects, mode);
+    renderAdminProjectStaffing(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminTrend(filteredPeople, filteredProjects);
     renderAdminAvfTrend(filteredPeople, filteredProjects);
     renderAdminDivergence(filteredPeople, filteredProjects);
     renderAdminAccuracy(filteredPeople, projects);
   }
 
-  function renderAdminUtilization(week, people) {
+  function renderAdminUtilization(week, people, mode) {
     const container = $('admin-utilization-content');
     container.innerHTML = '';
     const isAllWeeks = week === 'all';
@@ -3410,10 +3509,10 @@
     people.forEach(person => {
       let total;
       if (isAllWeeks) {
-        const weekTotals = allW.map(w => getPersonTotal(w, person)).filter(t => t > 0);
+        const weekTotals = allW.map(w => getPersonTotalByMode(w, person, mode || 'actual')).filter(t => t > 0);
         total = weekTotals.length > 0 ? Math.round(weekTotals.reduce((a, b) => a + b, 0) / weekTotals.length) : 0;
       } else {
-        total = getPersonTotal(week, person);
+        total = getPersonTotalByMode(week, person, mode || 'actual');
       }
       const st = total === 100 ? 'ok' : total > 100 ? 'over' : total === 0 ? 'empty' : 'under';
       const colors = { ok: '#059669', over: '#dc2626', under: '#d97706', empty: '#9ca3af' };
@@ -3441,14 +3540,15 @@
     }
   }
 
-  function renderAdminNotLogged(week, allPeople) {
+  function renderAdminNotLogged(week, allPeople, mode) {
     const container = $('admin-not-logged-content');
     const effectiveWeek = week === 'all' ? getCurrentWeek() : week;
-    const notLogged = allPeople.filter(person => getPersonTotal(effectiveWeek, person) === 0);
+    const notLogged = allPeople.filter(person => getPersonTotalByMode(effectiveWeek, person, mode || 'actual') === 0);
+    const modeLabel = (mode === 'forecast') ? 'forecast' : 'actuals';
 
     container.innerHTML = '';
     if (notLogged.length === 0) {
-      container.innerHTML = '<div class="all-logged">Everyone has logged time this week</div>';
+      container.innerHTML = `<div class="all-logged">Everyone has logged ${modeLabel} this week</div>`;
     } else {
       const list = document.createElement('div');
       list.className = 'not-logged-list';
@@ -3471,19 +3571,20 @@
     return first;
   }
 
-  function renderAdminBreakdown(week, filteredPeople, filteredProjects) {
+  function renderAdminBreakdown(week, filteredPeople, filteredProjects, mode) {
     const isAllWeeks = week === 'all';
     const allW = isAllWeeks ? getAllWeeksSorted() : null;
+    const effectiveMode = mode || 'actual';
     const barData = filteredPeople.map(person => {
       const row = { name: person, _raw: {} };
       let total = 0;
       filteredProjects.forEach(pr => {
         let val;
         if (isAllWeeks) {
-          const vals = allW.map(w => getEntry(w, person, pr)).filter(v => v > 0);
+          const vals = allW.map(w => getDataByMode(w, person, pr, effectiveMode)).filter(v => v > 0);
           val = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / allW.length : 0;
         } else {
-          val = getEntry(week, person, pr);
+          val = getDataByMode(week, person, pr, effectiveMode);
         }
         row._raw[pr] = Math.round(val);
         total += val;
@@ -3518,6 +3619,7 @@
     );
     const allNames = filteredPeople;
     const labels = barData.map(d => shortName(d.name, allNames));
+    const colors = getMutedColors(effectiveMode);
 
     createChart('admin-breakdown-chart', {
       type: 'bar',
@@ -3526,7 +3628,7 @@
         datasets: activeProjects.map((pr, i) => ({
           label: pr,
           data: barData.map(d => d[pr] || 0),
-          backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+          backgroundColor: colors[i % colors.length],
           borderWidth: 0,
           borderRadius: 0
         }))
@@ -3555,7 +3657,8 @@
               label: (ctx) => {
                 const d = barData[ctx.dataIndex];
                 const pr = activeProjects[ctx.datasetIndex];
-                return `${pr}: ${ctx.raw}% of time (${d._raw[pr]}% actual)`;
+                const modeLabel = (effectiveMode === 'forecast') ? 'forecast' : 'actual';
+                return `${pr}: ${ctx.raw}% of their time (${d._raw[pr]}% ${modeLabel} hours)`;
               }
             }
           }
@@ -3564,19 +3667,21 @@
     });
   }
 
-  function renderAdminPieChart(week, filteredPeople, filteredProjects) {
+  function renderAdminPieChart(week, filteredPeople, filteredProjects, mode) {
     const isAllWeeks = week === 'all';
     const allW = isAllWeeks ? getAllWeeksSorted() : null;
+    const effectiveMode = mode || 'actual';
+    const colors = getMutedColors(effectiveMode);
     const pieData = filteredProjects.map((pr, i) => {
       let total = 0;
       filteredPeople.forEach(person => {
         if (isAllWeeks) {
-          allW.forEach(w => { total += getEntry(w, person, pr); });
+          allW.forEach(w => { total += getDataByMode(w, person, pr, effectiveMode); });
         } else {
-          total += getEntry(week, person, pr);
+          total += getDataByMode(week, person, pr, effectiveMode);
         }
       });
-      return { name: pr, value: total, color: CHART_COLORS[i % CHART_COLORS.length] };
+      return { name: pr, value: total, color: colors[i % colors.length] };
     }).filter(d => d.value > 0);
 
     if (pieData.length === 0) {
@@ -3615,9 +3720,10 @@
     });
   }
 
-  function renderAdminProjectStaffing(week, filteredPeople, filteredProjects) {
+  function renderAdminProjectStaffing(week, filteredPeople, filteredProjects, mode) {
     const isAllWeeks = week === 'all';
     const allW = isAllWeeks ? getAllWeeksSorted() : null;
+    const effectiveMode = mode || 'actual';
 
     // Build raw data: for each project, each person's raw %
     const projectData = filteredProjects.map(pr => {
@@ -3626,10 +3732,10 @@
       filteredPeople.forEach(person => {
         let val;
         if (isAllWeeks) {
-          const vals = allW.map(w => getEntry(w, person, pr)).filter(v => v > 0);
+          const vals = allW.map(w => getDataByMode(w, person, pr, effectiveMode)).filter(v => v > 0);
           val = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / allW.length : 0;
         } else {
-          val = getEntry(week, person, pr);
+          val = getDataByMode(week, person, pr, effectiveMode);
         }
         row._raw[person] = Math.round(val);
         total += val;
@@ -3663,7 +3769,8 @@
     }
 
     const allNames = filteredPeople;
-    const personColors = filteredPeople.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+    const colors = getMutedColors(effectiveMode);
+    const personColors = filteredPeople.map((_, i) => colors[i % colors.length]);
 
     createChart('admin-project-staffing-chart', {
       type: 'bar',
@@ -3702,7 +3809,8 @@
                 const d = activeData[ctx.dataIndex];
                 const person = filteredPeople[ctx.datasetIndex];
                 const pName = shortName(person, allNames);
-                return `${pName}: ${ctx.raw}% of project (${d._raw[person]}% actual)`;
+                const modeLabel = (effectiveMode === 'forecast') ? 'forecast' : 'actual';
+                return `${pName}: ${ctx.raw}% of project effort (${d._raw[person]}% ${modeLabel} hours)`;
               }
             }
           }
