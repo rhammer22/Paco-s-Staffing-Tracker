@@ -2452,21 +2452,24 @@
     });
 
     // C) New Project Allocation (never worked on it before → >0 this week)
-    effectivePeople.forEach(person => {
-      effectiveProjects.forEach(pr => {
-        const curVal = getEntry(week, person, pr);
-        if (curVal <= 0) return;
-        const anyPrior = priorWeeks.some(w => getEntry(w, person, pr) > 0);
-        if (!anyPrior) {
-          const title = isSelf ? `Picked up ${pr} for the first time (${curVal}%)` : `Picked up ${pr} for the first time (${curVal}%)`;
-          const detail = `No prior allocation in ${priorWeeks.length} previous week${priorWeeks.length !== 1 ? 's' : ''}`;
-          const question = isSelf
-            ? `What prompted your new allocation to ${pr}?`
-            : `What prompted the new allocation to ${pr}?`;
-          addInsight('new', person, pr, { icon: '\u{1F195}', person: isSelf ? null : person, title, detail, question, score: curVal + 30 });
-        }
+    // Only show when there IS prior history, otherwise everything is "new"
+    if (priorWeeks.length >= 1) {
+      effectivePeople.forEach(person => {
+        effectiveProjects.forEach(pr => {
+          const curVal = getEntry(week, person, pr);
+          if (curVal <= 0) return;
+          const anyPrior = priorWeeks.some(w => getEntry(w, person, pr) > 0);
+          if (!anyPrior) {
+            const title = `Picked up ${pr} for the first time (${curVal}%)`;
+            const detail = `No prior allocation in ${priorWeeks.length} previous week${priorWeeks.length !== 1 ? 's' : ''}`;
+            const question = isSelf
+              ? `What prompted your new allocation to ${pr}?`
+              : `What prompted the new allocation to ${pr}?`;
+            addInsight('new', person, pr, { icon: '\u{1F195}', person: isSelf ? null : person, title, detail, question, score: curVal + 30 });
+          }
+        });
       });
-    });
+    }
 
     // D) Dropped Project (>0 in at least 2 prior weeks → 0 this week)
     effectivePeople.forEach(person => {
@@ -2586,6 +2589,87 @@
         }
       });
     });
+
+    // ─── Early Data Insights (work from week 1) ───
+    // These fire when there's little or no history so the section isn't empty.
+
+    // J) Person vs Team Average on a project (cross-person comparison)
+    // "Reed is spending 2x more on DSR than the team average"
+    if (!isSelf && effectivePeople.length >= 2) {
+      effectiveProjects.forEach(pr => {
+        const vals = effectivePeople.map(p => getEntry(week, p, pr)).filter(v => v > 0);
+        if (vals.length < 2) return;
+        const teamAvg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+        if (teamAvg <= 0) return;
+        effectivePeople.forEach(person => {
+          const val = getEntry(week, person, pr);
+          if (val <= 0) return;
+          const relDiff = Math.round(((val - teamAvg) / teamAvg) * 100);
+          const absDiff = Math.abs(val - teamAvg);
+          if (Math.abs(relDiff) >= 50 && absDiff >= 10) {
+            const icon = relDiff > 0 ? '\u{1F4C8}' : '\u{1F4C9}';
+            const dir = relDiff > 0 ? 'more' : 'less';
+            const title = `Spending ${Math.abs(relDiff)}% ${dir} on ${pr} than team average`;
+            const detail = `${person}: ${val}% \u00B7 Team avg: ${teamAvg}% (${vals.length} people on this project)`;
+            const question = `Is this the right level of involvement for ${person} on ${pr}?`;
+            addInsight('teamavg', person, pr, { icon, person, title, detail, question, score: Math.abs(relDiff) + absDiff - 5 });
+          }
+        });
+      });
+    }
+
+    // K) Utilization snapshot — who's under/over-allocated (works from week 1)
+    effectivePeople.forEach(person => {
+      const total = getPersonTotal(week, person);
+      if (total <= 0) return; // skip if not logged
+      if (total > 105) {
+        const title = `Over-allocated at ${total}%`;
+        const detail = `${total - 100}% over capacity this week`;
+        const question = isSelf
+          ? `Can you realistically handle this workload?`
+          : `Is ${person} stretched too thin?`;
+        addInsight('over', person, null, { icon: '\u{1F534}', person: isSelf ? null : person, title, detail, question, score: total - 100 + 30 });
+      } else if (total > 0 && total < 70) {
+        const title = `Under-allocated at ${total}%`;
+        const detail = `${100 - total}% of capacity unassigned`;
+        const question = isSelf
+          ? `Do you have capacity for more work?`
+          : `Does ${person} have capacity for additional projects?`;
+        addInsight('under', person, null, { icon: '\u{1F7E1}', person: isSelf ? null : person, title, detail, question, score: 100 - total + 15 });
+      }
+    });
+
+    // L) Top project by team effort (works from week 1)
+    if (!isSelf && effectivePeople.length >= 2) {
+      let topPr = null, topTotal = 0;
+      effectiveProjects.forEach(pr => {
+        let total = 0;
+        effectivePeople.forEach(p => { total += getEntry(week, p, pr); });
+        if (total > topTotal) { topPr = pr; topTotal = total; }
+      });
+      if (topPr && topTotal > 0) {
+        const numPeople = effectivePeople.filter(p => getEntry(week, p, topPr) > 0).length;
+        const title = `${topPr} is the top project this week`;
+        const detail = `${topTotal}% total team allocation across ${numPeople} people`;
+        const question = `Is this where the team should be spending the most effort?`;
+        addInsight('topproj', null, topPr, { icon: '\u{1F3C6}', person: null, title, detail, question, score: topTotal + 5 });
+      }
+    }
+
+    // M) Person's top project (for individual view, works from week 1)
+    if (isSelf) {
+      let topPr = null, topVal = 0;
+      effectiveProjects.forEach(pr => {
+        const val = getEntry(week, singlePerson, pr);
+        if (val > topVal) { topPr = pr; topVal = val; }
+      });
+      const numProjects = effectiveProjects.filter(pr => getEntry(week, singlePerson, pr) > 0).length;
+      if (topPr && topVal > 0 && numProjects >= 2) {
+        const title = `Most time spent on ${topPr} (${topVal}%)`;
+        const detail = `Working across ${numProjects} projects this week`;
+        addInsight('mytop', singlePerson, topPr, { icon: '\u{1F3AF}', person: null, title, detail, question: null, score: topVal + 2 });
+      }
+    }
 
     // Sort by score descending, dedup already handled, return max 7
     insights.sort((a, b) => b.score - a.score);
