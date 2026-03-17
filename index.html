@@ -1452,7 +1452,7 @@
     text-align: center;
   }
 
-  .entry-col-actual {
+  .entry-col-forecast {
     border-left: 1.5px solid var(--color-border);
     padding-left: 10px;
     align-self: stretch;
@@ -1501,7 +1501,7 @@
     gap: 2px;
   }
 
-  .entry-input-cell.actual-cell {
+  .entry-input-cell.forecast-cell {
     border-left: 1.5px solid var(--color-border);
     padding-left: 10px;
     align-self: stretch;
@@ -3156,7 +3156,7 @@
 
       // Actual input cell
       const actualCell = document.createElement('div');
-      actualCell.className = 'entry-input-cell actual-cell';
+      actualCell.className = 'entry-input-cell';
       const actualInput = document.createElement('input');
       actualInput.type = 'number';
       actualInput.className = 'pct-input actual-input' + (actualVal > 0 ? ' has-value' : '');
@@ -3187,7 +3187,7 @@
 
       // Forecast input cell
       const forecastCell = document.createElement('div');
-      forecastCell.className = 'entry-input-cell';
+      forecastCell.className = 'entry-input-cell forecast-cell';
       const forecastInput = document.createElement('input');
       forecastInput.type = 'number';
       forecastInput.className = 'pct-input forecast-input' + (forecastVal > 0 ? ' has-value' : '');
