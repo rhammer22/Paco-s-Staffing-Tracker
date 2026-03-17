@@ -1380,7 +1380,7 @@
 
   .entry-totals {
     display: flex;
-    gap: 8px;
+    gap: 12px;
     width: 100%;
   }
 
@@ -1436,7 +1436,8 @@
 
   .entry-table-header {
     display: grid;
-    grid-template-columns: 1fr 80px 80px;
+    grid-template-columns: 1fr 88px 88px;
+    gap: 0 12px;
     padding: 8px 16px;
     background: var(--color-bg);
     border-bottom: 1px solid var(--color-border-light);
@@ -1454,7 +1455,8 @@
 
   .entry-row {
     display: grid;
-    grid-template-columns: 1fr 80px 80px;
+    grid-template-columns: 1fr 88px 88px;
+    gap: 0 12px;
     align-items: center;
     padding: 6px 16px;
     border-bottom: 1px solid var(--color-border-light);
@@ -1968,12 +1970,12 @@
     <div class="entry-header">
       <div class="entry-totals">
         <div class="entry-total-pill">
-          <span class="entry-total-label">Actual</span>
+          <span class="entry-total-label">This Week</span>
           <span class="entry-total-value" id="total-actual" data-testid="total-actual">0%</span>
           <span class="entry-total-week" id="actual-week-label"></span>
         </div>
         <div class="entry-total-pill forecast-pill">
-          <span class="entry-total-label">Forecast</span>
+          <span class="entry-total-label">Next Week</span>
           <span class="entry-total-value" id="total-forecast" data-testid="total-forecast">0%</span>
           <span class="entry-total-week" id="forecast-week-label"></span>
         </div>
@@ -1981,8 +1983,8 @@
     </div>
     <div class="entry-table-header">
       <span class="entry-col-project">Project</span>
-      <span class="entry-col-actual" id="entry-actual-col-label">Actual</span>
-      <span class="entry-col-forecast" id="entry-forecast-col-label">Forecast</span>
+      <span class="entry-col-actual" id="entry-actual-col-label">This Week</span>
+      <span class="entry-col-forecast" id="entry-forecast-col-label">Next Week</span>
     </div>
     <div id="combined-project-list" class="entry-table-body"></div>
   </div>
@@ -3111,8 +3113,8 @@
     const forecastRange = getWeekDateRange(nextWeek);
     if (actualWeekLabel) actualWeekLabel.textContent = actualRange;
     if (forecastWeekLabel) forecastWeekLabel.textContent = forecastRange;
-    if (entryActualColLabel) entryActualColLabel.innerHTML = `Actual<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;opacity:0.7">${actualRange}</span>`;
-    if (entryForecastColLabel) entryForecastColLabel.innerHTML = `Forecast<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;opacity:0.7">${forecastRange}</span>`;
+    if (entryActualColLabel) entryActualColLabel.innerHTML = `This Week<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;opacity:0.7">${actualRange}</span>`;
+    if (entryForecastColLabel) entryForecastColLabel.innerHTML = `Next Week<br><span style="font-size:9px;font-weight:400;text-transform:none;letter-spacing:0;opacity:0.7">${forecastRange}</span>`;
 
     projects.forEach((proj) => {
       const actualKey = `${currentWeek}|${currentPerson}|${proj}`;
