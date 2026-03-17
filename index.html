@@ -1488,14 +1488,15 @@
     font-weight: 500;
     color: var(--color-text);
     display: flex;
-    align-items: baseline;
-    gap: 6px;
+    flex-direction: column;
+    gap: 1px;
   }
 
   .entry-forecast-hint {
     font-size: 11px;
     color: var(--color-forecast);
     font-weight: 400;
+    font-style: italic;
   }
 
   .entry-input-cell {
@@ -3153,7 +3154,7 @@
       if (priorForecastVal > 0) {
         const hint = document.createElement('span');
         hint.className = 'entry-forecast-hint';
-        hint.textContent = `f: ${priorForecastVal}%`;
+        hint.textContent = `Forecast: ${priorForecastVal}%`;
         nameEl.appendChild(hint);
       }
 
