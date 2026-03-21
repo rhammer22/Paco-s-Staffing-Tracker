@@ -4337,14 +4337,12 @@
 
     const weeks = getAllWeeksSorted().reverse();
     const curWeek = getCurrentWeek();
-    // Default to prior week (the week before the current one)
-    const priorWeek = weeks.find(w => w < curWeek) || weeks[0] || curWeek;
     weekSel.innerHTML = '<option value="all">All Weeks</option>';
     weeks.forEach(w => {
       const opt = document.createElement('option');
       opt.value = w;
       opt.textContent = `${w}  (${getWeekDateRange(w)})`;
-      if (w === priorWeek) opt.selected = true;
+      if (w === curWeek) opt.selected = true;
       weekSel.appendChild(opt);
     });
 
