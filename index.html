@@ -3183,10 +3183,9 @@
     let html = '<div class="overdue-banner-title">\u26A0\uFE0F Missing Submissions</div>';
     missing.forEach(m => {
       if (m.type === 'actuals') {
-        html += `<div class="overdue-banner-item">\u2022 <strong>${m.label}</strong> &mdash; <a class="overdue-banner-link" data-switch-week="${m.week}">switch to ${m.week}</a></div>`;
+        html += `<div class="overdue-banner-item">\u2022 <strong>${m.label}</strong><br><a class="overdue-banner-link" data-switch-week="${m.week}">(Switch to ${m.week} view)</a></div>`;
       } else {
-        // Forecast for this week is entered from LAST week's view
-        html += `<div class="overdue-banner-item">\u2022 <strong>${m.label}</strong> &mdash; <a class="overdue-banner-link" data-switch-week="${m.week}">switch to ${m.week}</a></div>`;
+        html += `<div class="overdue-banner-item">\u2022 <strong>${m.label}</strong><br><a class="overdue-banner-link" data-switch-week="${m.week}">(Switch to ${m.week} view)</a></div>`;
       }
     });
 
