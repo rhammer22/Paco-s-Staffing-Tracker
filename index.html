@@ -1370,6 +1370,45 @@
     margin-right: auto;
   }
 
+  /* ─── Overdue Banner ─── */
+  .overdue-banner {
+    margin: 10px 16px 0;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 12px 14px;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: var(--radius);
+    font-size: 13px;
+    color: #92400e;
+    line-height: 1.5;
+  }
+
+  .overdue-banner-title {
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+
+  .overdue-banner-link {
+    color: #92400e;
+    font-weight: 600;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .overdue-banner-link:hover {
+    color: #78350f;
+  }
+
+  .overdue-banner-item {
+    margin-top: 6px;
+    padding-left: 2px;
+  }
+
   /* ─── Entry Grid: shared column template ─── */
   .entry-grid-cols {
     display: grid;
@@ -1988,6 +2027,8 @@
     </a>
   </div>
 
+  <div id="overdue-banner" class="overdue-banner" style="display:none;"></div>
+
   <div class="entry-card">
     <div class="entry-grid-cols entry-header">
       <div class="entry-header-project-spacer"></div>
@@ -2532,6 +2573,19 @@
     const dec31Day = dec31.getDay() || 7;
     const maxWeek = (dec31Day === 4 || (dec31Day === 5 && new Date(year, 1, 29).getMonth() === 1)) ? 53 : 52;
     if (week > maxWeek) { week = 1; year++; }
+    return `${year}-W${String(week).padStart(2, '0')}`;
+  }
+
+  function getPrevWeek(weekStr) {
+    const [yearStr, wStr] = weekStr.split('-W');
+    let year = parseInt(yearStr);
+    let week = parseInt(wStr) - 1;
+    if (week < 1) {
+      year--;
+      const dec31 = new Date(year, 11, 31);
+      const dec31Day = dec31.getDay() || 7;
+      week = (dec31Day === 4 || (dec31Day === 5 && new Date(year, 1, 29).getMonth() === 1)) ? 53 : 52;
+    }
     return `${year}-W${String(week).padStart(2, '0')}`;
   }
 
@@ -3083,7 +3137,74 @@
     renderWeekSelector();
     renderProjectList();
     updateTotal();
+    checkOverdueBanner();
     showScreen('app');
+  }
+
+  // ─── Overdue Banner ───
+  function checkOverdueBanner() {
+    const banner = $('overdue-banner');
+    if (!banner || !currentPerson || !appData) { if (banner) banner.style.display = 'none'; return; }
+
+    const cw = getCurrentWeek();
+    const prevW = getPrevWeek(cw);
+    const entries = appData.entries || {};
+    const forecasts = appData.forecasts || {};
+    const projects = appData.projects || [];
+
+    // Check if person has actuals for LAST week
+    const hasLastWeekActuals = projects.some(p => (entries[`${prevW}|${currentPerson}|${p}`] || 0) > 0);
+    // Check if person has forecast for THIS week (submitted last week as "next week")
+    const hasThisWeekForecast = projects.some(p => (forecasts[`${cw}|${currentPerson}|${p}`] || 0) > 0);
+
+    const missing = [];
+    if (!hasLastWeekActuals) {
+      missing.push({
+        type: 'actuals',
+        week: prevW,
+        range: getWeekDateRange(prevW),
+        label: `Actuals for ${prevW} (${getWeekDateRange(prevW)})`
+      });
+    }
+    if (!hasThisWeekForecast) {
+      missing.push({
+        type: 'forecast',
+        week: prevW,
+        range: getWeekDateRange(prevW),
+        label: `Forecast for ${cw} (${getWeekDateRange(cw)})`
+      });
+    }
+
+    if (missing.length === 0) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    let html = '<div class="overdue-banner-title">\u26A0\uFE0F Missing Submissions</div>';
+    missing.forEach(m => {
+      if (m.type === 'actuals') {
+        html += `<div class="overdue-banner-item">\u2022 <strong>${m.label}</strong> &mdash; <a class="overdue-banner-link" data-switch-week="${m.week}">switch to ${m.week}</a></div>`;
+      } else {
+        // Forecast for this week is entered from LAST week's view
+        html += `<div class="overdue-banner-item">\u2022 <strong>${m.label}</strong> &mdash; <a class="overdue-banner-link" data-switch-week="${m.week}">switch to ${m.week}</a></div>`;
+      }
+    });
+
+    banner.innerHTML = html;
+    banner.style.display = 'block';
+
+    // Attach click handlers to switch-week links
+    banner.querySelectorAll('[data-switch-week]').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetWeek = link.getAttribute('data-switch-week');
+        weekSelect.value = targetWeek;
+        currentWeek = targetWeek;
+        renderProjectList();
+        updateTotal();
+        banner.style.display = 'none';
+      });
+    });
   }
 
   // ─── Week Selector ───
@@ -3344,6 +3465,7 @@
 
       setSaveBtnsState('Saved ✓', 'saved', true);
       showToast('Hours saved successfully');
+      checkOverdueBanner();
 
       // Easter egg: confetti on perfect 100%
       const savedActualTotal = parseInt(totalActual.textContent) || 0;
