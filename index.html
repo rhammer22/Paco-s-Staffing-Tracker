@@ -1370,6 +1370,22 @@
     margin-right: auto;
   }
 
+  /* ─── Insights Disclaimer ─── */
+  .insights-disclaimer {
+    margin: 0 16px 12px;
+    padding: 10px 14px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: #1e40af;
+    line-height: 1.5;
+  }
+
+  .insights-disclaimer strong {
+    font-weight: 600;
+  }
+
   /* ─── Overdue Banner ─── */
   .overdue-banner {
     margin: 10px 16px 0;
@@ -2075,6 +2091,7 @@
         <select class="insight-select" id="my-insight-week-select" data-testid="my-insight-week-select"></select>
       </div>
     </div>
+    <div id="my-insights-disclaimer" class="insights-disclaimer" style="display:none;"></div>
     <!-- My Utilization -->
     <div class="insight-card" data-testid="my-utilization-card">
       <div class="insight-card-title">My Utilization</div>
@@ -2194,6 +2211,7 @@
           </select>
         </div>
       </div>
+      <div id="admin-insights-disclaimer" class="insights-disclaimer" style="display:none;"></div>
 
       <!-- Utilization -->
       <div class="insight-card" data-testid="admin-utilization-card">
@@ -3561,6 +3579,32 @@
 
     weekSel.onchange = () => renderMyInsightsCharts();
     renderMyInsightsCharts();
+    updateInsightsDisclaimer('my-insights-disclaimer');
+  }
+
+  function updateInsightsDisclaimer(elementId) {
+    const el = $(elementId);
+    if (!el || !appData) return;
+
+    // Count weeks that have at least one entry with value > 0
+    const entries = appData.entries || {};
+    const weeksWithData = new Set();
+    Object.keys(entries).forEach(key => {
+      if ((entries[key] || 0) > 0) {
+        const week = key.split('|')[0];
+        weeksWithData.add(week);
+      }
+    });
+    const weekCount = weeksWithData.size;
+
+    // Hide after 7 weeks of data (~4 more weeks from now)
+    if (weekCount >= 7) {
+      el.style.display = 'none';
+      return;
+    }
+
+    el.innerHTML = `<strong>Note:</strong> These insights are based on <strong>${weekCount} week${weekCount !== 1 ? 's' : ''}</strong> of data. As more weeks are logged, averages and trends will become more accurate.`;
+    el.style.display = 'block';
   }
 
   function renderMyInsightsCharts() {
@@ -4486,6 +4530,7 @@
     weekSel.onchange = () => renderAdminInsights();
     personSel.onchange = () => renderAdminInsights();
     projectSel.onchange = () => renderAdminInsights();
+    updateInsightsDisclaimer('admin-insights-disclaimer');
   }
 
   // ─── Admin Insights ───
