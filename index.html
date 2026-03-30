@@ -2602,6 +2602,15 @@
     return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
   }
 
+  // Smart default: Sun-Wed = prior week, Thu-Sat = current week
+  function getInsightsDefaultWeek() {
+    const dow = new Date().getDay(); // 0=Sun, 1=Mon, ... 6=Sat
+    const cw = getCurrentWeek();
+    // Sun(0), Mon(1), Tue(2), Wed(3) = prior week
+    // Thu(4), Fri(5), Sat(6) = current week
+    return dow <= 3 ? getPrevWeek(cw) : cw;
+  }
+
   function getWeekDateRange(weekStr) {
     const [yearStr, wStr] = weekStr.split('-W');
     const year = parseInt(yearStr);
@@ -3607,7 +3616,7 @@
       const opt = document.createElement('option');
       opt.value = w;
       opt.textContent = `${w}  (${getWeekDateRange(w)})`;
-      if (w === (currentWeek || getCurrentWeek())) opt.selected = true;
+      if (w === getInsightsDefaultWeek()) opt.selected = true;
       weekSel.appendChild(opt);
     });
 
@@ -4244,11 +4253,13 @@
     adminWeekSelect.innerHTML = '';
     const weeks = new Set(appData.weeks || []);
     weeks.add(getCurrentWeek());
+    const defaultWeek = getInsightsDefaultWeek();
     const sorted = [...weeks].sort().reverse();
     sorted.forEach((w) => {
       const opt = document.createElement('option');
       opt.value = w;
       opt.textContent = `${w}  (${getWeekDateRange(w)})`;
+      if (w === defaultWeek) opt.selected = true;
       adminWeekSelect.appendChild(opt);
     });
     adminWeekSelect.onchange = () => renderSummaryTable();
@@ -4546,13 +4557,13 @@
     const projectSel = $('admin-insight-project');
 
     const weeks = getAllWeeksSorted().reverse();
-    const curWeek = getCurrentWeek();
+    const defaultWeek = getInsightsDefaultWeek();
     weekSel.innerHTML = '<option value="all">All Weeks</option>';
     weeks.forEach(w => {
       const opt = document.createElement('option');
       opt.value = w;
       opt.textContent = `${w}  (${getWeekDateRange(w)})`;
-      if (w === curWeek) opt.selected = true;
+      if (w === defaultWeek) opt.selected = true;
       weekSel.appendChild(opt);
     });
 
