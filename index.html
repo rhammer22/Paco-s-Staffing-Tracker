@@ -3807,7 +3807,8 @@
     const cw = getCurrentWeek();
     const nw = getNextWeek(cw);
     const nw2 = getNextWeek(nw);
-    const avfWeeks = [...new Set([...allWeeks, nw, nw2])].sort();
+    const nw3 = getNextWeek(nw2);
+    const avfWeeks = [...new Set([...allWeeks, nw, nw2, nw3])].sort();
 
     function getProjectAvg(person, project) {
       let total = 0, count = 0;
@@ -3869,7 +3870,7 @@
           lastFcIdx = lastActualIdx;
           lastFcVal = actuals[lastActualIdx];
         }
-        const grayEndIdx = lastFcIdx >= 0 ? lastFcIdx + 1 : -1;
+        const grayEndIdx = lastFcIdx >= 0 ? lastFcIdx + 2 : -1;
         if (lastFcIdx >= 0 && grayEndIdx < avfWeeks.length && lastFcVal > 0) {
           const grayData = avfWeeks.map((w, idx) => {
             if (idx === lastFcIdx) return lastFcVal;
@@ -5079,7 +5080,8 @@
     const cwk = getCurrentWeek();
     const nwk = getNextWeek(cwk);
     const nwk2 = getNextWeek(nwk);
-    const avfWeeks = [...new Set([...allWeeks, nwk, nwk2])].sort();
+    const nwk3 = getNextWeek(nwk2);
+    const avfWeeks = [...new Set([...allWeeks, nwk, nwk2, nwk3])].sort();
 
     if (avfWeeks.length === 0 || effectiveProjects.length === 0) {
       destroyChart('admin-avf-trend-chart');
@@ -5159,7 +5161,7 @@
           lastFcIdx = lastActualIdx;
           lastFcVal = actuals[lastActualIdx];
         }
-        const grayEndIdx = lastFcIdx >= 0 ? lastFcIdx + 1 : -1;
+        const grayEndIdx = lastFcIdx >= 0 ? lastFcIdx + 2 : -1;
         if (lastFcIdx >= 0 && grayEndIdx < avfWeeks.length && lastFcVal > 0) {
           const grayData = avfWeeks.map((w, idx) => {
             if (idx === lastFcIdx) return lastFcVal;
