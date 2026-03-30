@@ -3852,19 +3852,15 @@
         }
       }
 
-      // Gray dotted line: forecast to projected average
+      // Gray dotted line: from forecast week (nw) to projected average (nw2)
       if (projAvg > 0) {
         const nwIdx = avfWeeks.indexOf(nw);
         const nw2Idx = avfWeeks.indexOf(nw2);
         if (nwIdx >= 0 && nw2Idx >= 0) {
-          // Start gray from the last forecast point or last actual
-          const lastForecastVal = fcasts[nwIdx];
-          const bridgeVal = lastForecastVal > 0 ? lastForecastVal : (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
-          // Find the starting index: where the dashed forecast ends, or where actuals end
-          const grayStartIdx = lastForecastVal > 0 ? nwIdx : lastActualIdx;
-          if (bridgeVal > 0 && grayStartIdx >= 0) {
+          const forecastVal = fcasts[nwIdx] || (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
+          if (forecastVal > 0) {
             const grayData = avfWeeks.map((w, idx) => {
-              if (idx === grayStartIdx) return bridgeVal;
+              if (idx === nwIdx) return forecastVal;
               if (idx === nw2Idx) return projAvg;
               return null;
             });
@@ -5079,19 +5075,20 @@
       return;
     }
 
-    function getTeamProjectAvg(project) {
-      let total = 0, count = 0;
-      allWeeks.forEach(w => {
-        effectivePeople.forEach(p => {
-          const v = getEntry(w, p, project);
-          if (v > 0) { total += v; count++; }
-        });
-      });
-      return count > 0 ? Math.round(total / count) : 0;
-    }
-
     const datasets = [];
     const pplCount = effectivePeople.length || 1;
+
+    // Team avg: average the per-week team values (matching how the chart line is computed)
+    function getTeamProjectAvg(project) {
+      let weekTotal = 0, weekCount = 0;
+      allWeeks.forEach(w => {
+        let t = 0;
+        effectivePeople.forEach(p => { t += getEntry(w, p, project); });
+        const weekAvg = Math.round(t / pplCount);
+        if (weekAvg > 0) { weekTotal += weekAvg; weekCount++; }
+      });
+      return weekCount > 0 ? Math.round(weekTotal / weekCount) : 0;
+    }
 
     effectiveProjects.forEach((pr, i) => {
       const color = CHART_COLORS[i % CHART_COLORS.length];
@@ -5140,17 +5137,15 @@
         }
       }
 
-      // Gray dotted line: forecast to projected average
+      // Gray dotted line: from forecast week (nwk) to projected average (nwk2)
       if (projAvg > 0) {
         const nwIdx = avfWeeks.indexOf(nwk);
         const nw2Idx = avfWeeks.indexOf(nwk2);
         if (nwIdx >= 0 && nw2Idx >= 0) {
-          const lastForecastVal = fcasts[nwIdx];
-          const bridgeVal = lastForecastVal > 0 ? lastForecastVal : (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
-          const grayStartIdx = lastForecastVal > 0 ? nwIdx : lastActualIdx;
-          if (bridgeVal > 0 && grayStartIdx >= 0) {
+          const forecastVal = fcasts[nwIdx] || (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
+          if (forecastVal > 0) {
             const grayData = avfWeeks.map((w, idx) => {
-              if (idx === grayStartIdx) return bridgeVal;
+              if (idx === nwIdx) return forecastVal;
               if (idx === nw2Idx) return projAvg;
               return null;
             });
