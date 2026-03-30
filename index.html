@@ -1067,6 +1067,32 @@
     vertical-align: middle;
   }
 
+  /* AVF Chart Legend */
+  .avf-legend {
+    display: flex;
+    gap: 16px;
+    padding: 6px 0 4px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+  }
+  .avf-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .avf-legend-line {
+    display: inline-block;
+    width: 24px;
+    height: 0;
+    border-top: 2.5px solid var(--color-accent);
+  }
+  .avf-legend-line.avf-dashed {
+    border-top-style: dashed;
+  }
+  .avf-legend-line.avf-gray {
+    border-top: 2px dotted #9CA3AF;
+  }
+
   .chart-local-filters {
     display: flex;
     gap: 10px;
@@ -2120,7 +2146,11 @@
     <!-- My Actual vs Forecast -->
     <div class="insight-card" data-testid="my-forecast-card">
       <div class="insight-card-title">My Actual vs Forecast</div>
-      <div class="insight-card-subtitle">Solid = actuals, dashed = forecast, gray = trending to project average</div>
+      <div class="avf-legend">
+        <span class="avf-legend-item"><span class="avf-legend-line avf-solid"></span> Actual</span>
+        <span class="avf-legend-item"><span class="avf-legend-line avf-dashed"></span> Forecast</span>
+        <span class="avf-legend-item"><span class="avf-legend-line avf-gray"></span> Proj. Average</span>
+      </div>
       <div class="chart-local-filters" id="my-avf-filters">
         <label>Project <select id="my-avf-project-filter"></select></label>
       </div>
@@ -2270,7 +2300,11 @@
       <!-- Actual vs Forecast Trend -->
       <div class="insight-card" style="margin-top:16px" data-testid="admin-avf-trend-card">
         <div class="insight-card-title">Actual vs Forecast Trend</div>
-        <div class="insight-card-subtitle">Solid = actuals, dashed = forecast, gray = trending to project average</div>
+        <div class="avf-legend">
+          <span class="avf-legend-item"><span class="avf-legend-line avf-solid"></span> Actual</span>
+          <span class="avf-legend-item"><span class="avf-legend-line avf-dashed"></span> Forecast</span>
+          <span class="avf-legend-item"><span class="avf-legend-line avf-gray"></span> Proj. Average</span>
+        </div>
         <div class="chart-local-filters" id="admin-avf-filters">
           <label>Person <select id="admin-avf-person-filter"></select></label>
           <label>Project <select id="admin-avf-project-filter"></select></label>
@@ -3814,10 +3848,14 @@
         const nwIdx = avfWeeks.indexOf(nw);
         const nw2Idx = avfWeeks.indexOf(nw2);
         if (nwIdx >= 0 && nw2Idx >= 0) {
-          const forecastVal = fcasts[nwIdx] || (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
-          if (forecastVal > 0) {
+          // Start gray from the last forecast point or last actual
+          const lastForecastVal = fcasts[nwIdx];
+          const bridgeVal = lastForecastVal > 0 ? lastForecastVal : (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
+          // Find the starting index: where the dashed forecast ends, or where actuals end
+          const grayStartIdx = lastForecastVal > 0 ? nwIdx : lastActualIdx;
+          if (bridgeVal > 0 && grayStartIdx >= 0) {
             const grayData = avfWeeks.map((w, idx) => {
-              if (idx === nwIdx) return forecastVal;
+              if (idx === grayStartIdx) return bridgeVal;
               if (idx === nw2Idx) return projAvg;
               return null;
             });
@@ -3825,8 +3863,8 @@
               label: pr + ' (proj avg)', data: grayData,
               borderColor: '#9CA3AF', backgroundColor: '#9CA3AF10', borderWidth: 1.5,
               borderDash: [3, 3], tension: 0.3,
-              pointRadius: grayData.map(v => v !== null ? 3 : 0),
-              pointStyle: 'circle', fill: false, spanGaps: false
+              pointRadius: grayData.map((v, idx) => (v !== null && idx === nw2Idx) ? 3 : 0),
+              pointStyle: 'circle', fill: false, spanGaps: true
             });
           }
         }
@@ -5096,10 +5134,12 @@
         const nwIdx = avfWeeks.indexOf(nwk);
         const nw2Idx = avfWeeks.indexOf(nwk2);
         if (nwIdx >= 0 && nw2Idx >= 0) {
-          const forecastVal = fcasts[nwIdx] || (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
-          if (forecastVal > 0) {
+          const lastForecastVal = fcasts[nwIdx];
+          const bridgeVal = lastForecastVal > 0 ? lastForecastVal : (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
+          const grayStartIdx = lastForecastVal > 0 ? nwIdx : lastActualIdx;
+          if (bridgeVal > 0 && grayStartIdx >= 0) {
             const grayData = avfWeeks.map((w, idx) => {
-              if (idx === nwIdx) return forecastVal;
+              if (idx === grayStartIdx) return bridgeVal;
               if (idx === nw2Idx) return projAvg;
               return null;
             });
@@ -5107,8 +5147,8 @@
               label: pr + ' (proj avg)', data: grayData,
               borderColor: '#9CA3AF', backgroundColor: '#9CA3AF10', borderWidth: 1.5,
               borderDash: [3, 3], tension: 0.3,
-              pointRadius: grayData.map(v => v !== null ? 3 : 0),
-              pointStyle: 'circle', fill: false, spanGaps: false
+              pointRadius: grayData.map((v, idx) => (v !== null && idx === nw2Idx) ? 3 : 0),
+              pointStyle: 'circle', fill: false, spanGaps: true
             });
           }
         }
