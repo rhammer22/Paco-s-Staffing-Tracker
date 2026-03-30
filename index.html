@@ -2723,25 +2723,29 @@
       insights.push(obj);
     }
 
-    // A) Per-Person vs Their Historical Average
+    // A) Per-Person vs Their Historical Average (include all weeks, not just >0)
     effectivePeople.forEach(person => {
       effectiveProjects.forEach(pr => {
         const curVal = getEntry(week, person, pr);
-        const vals = priorWeeks.map(w => getEntry(w, person, pr)).filter(v => v > 0);
-        if (vals.length < 1 || curVal <= 0) return;
-        const avg = Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+        if (curVal <= 0) return;
+        const allVals = priorWeeks.map(w => getEntry(w, person, pr));
+        if (allVals.length < 1) return;
+        // Only include if they had SOME history on this project
+        const hasHistory = allVals.some(v => v > 0);
+        if (!hasHistory) return;
+        const avg = Math.round(allVals.reduce((a, b) => a + b, 0) / allVals.length);
         if (avg <= 0) return;
-        const relDiff = Math.round(((curVal - avg) / avg) * 100);
-        const absDiff = Math.abs(curVal - avg);
-        if (Math.abs(relDiff) >= 30 && absDiff >= 8) {
-          const icon = relDiff > 0 ? '\u{1F4C8}' : '\u{1F4C9}';
-          const dir = relDiff > 0 ? 'more' : 'less';
-          const title = `Spending ${Math.abs(relDiff)}% ${dir} time on ${pr} than usual`;
-          const detail = `This week: ${curVal}% \u00B7 Avg: ${avg}% over ${vals.length} week${vals.length > 1 ? 's' : ''}`;
+        const ppDiff = curVal - avg; // percentage point difference
+        const absDiff = Math.abs(ppDiff);
+        if (absDiff >= 8) {
+          const icon = ppDiff > 0 ? '\u{1F4C8}' : '\u{1F4C9}';
+          const dir = ppDiff > 0 ? 'more' : 'less';
+          const title = `${pr}: ${curVal}% this week (${ppDiff > 0 ? '+' : ''}${ppDiff}pp vs ${avg}% avg)`;
+          const detail = `This week: ${curVal}% \u00B7 Avg: ${avg}% over ${allVals.length} week${allVals.length > 1 ? 's' : ''}`;
           const question = isSelf
-            ? (relDiff > 0 ? `Is ${pr} taking more of your time intentionally?` : `Are you pulling back from ${pr} on purpose?`)
-            : (relDiff > 0 ? `Is ${pr} ramping up, or was this a one-off?` : `Are you pulling back from ${pr} for a reason?`);
-          addInsight('avg', person, pr, { icon, person: isSelf ? null : person, title, detail, question, score: Math.abs(relDiff) + absDiff });
+            ? (ppDiff > 0 ? `Is ${pr} taking more of your time intentionally?` : `Are you pulling back from ${pr} on purpose?`)
+            : (ppDiff > 0 ? `Is ${pr} ramping up, or was this a one-off?` : `Are you pulling back from ${pr} for a reason?`);
+          addInsight('avg', person, pr, { icon, person: isSelf ? null : person, title, detail, question, score: absDiff * 2 });
         }
       });
     });
@@ -3852,26 +3856,33 @@
         }
       }
 
-      // Gray dotted line: from forecast week (nw) to projected average (nw2)
+      // Gray dotted line: from last forecast point to one week further, trending to avg
       if (projAvg > 0) {
-        const nwIdx = avfWeeks.indexOf(nw);
-        const nw2Idx = avfWeeks.indexOf(nw2);
-        if (nwIdx >= 0 && nw2Idx >= 0) {
-          const forecastVal = fcasts[nwIdx] || (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
-          if (forecastVal > 0) {
-            const grayData = avfWeeks.map((w, idx) => {
-              if (idx === nwIdx) return forecastVal;
-              if (idx === nw2Idx) return projAvg;
-              return null;
-            });
-            forecastDatasets.push({
-              label: pr + ' (proj avg)', data: grayData,
-              borderColor: '#9CA3AF', backgroundColor: '#9CA3AF10', borderWidth: 1.5,
-              borderDash: [3, 3], tension: 0.3,
-              pointRadius: grayData.map((v, idx) => (v !== null && idx === nw2Idx) ? 3 : 0),
-              pointStyle: 'circle', fill: false, spanGaps: true
-            });
-          }
+        // Find the last week that has forecast data
+        let lastFcIdx = -1;
+        let lastFcVal = 0;
+        avfWeeks.forEach((w, idx) => {
+          if (fcasts[idx] > 0 && idx > lastActualIdx) { lastFcIdx = idx; lastFcVal = fcasts[idx]; }
+        });
+        // If no forecast, use last actual as starting point
+        if (lastFcIdx < 0 && lastActualIdx >= 0) {
+          lastFcIdx = lastActualIdx;
+          lastFcVal = actuals[lastActualIdx];
+        }
+        const grayEndIdx = lastFcIdx >= 0 ? lastFcIdx + 1 : -1;
+        if (lastFcIdx >= 0 && grayEndIdx < avfWeeks.length && lastFcVal > 0) {
+          const grayData = avfWeeks.map((w, idx) => {
+            if (idx === lastFcIdx) return lastFcVal;
+            if (idx === grayEndIdx) return projAvg;
+            return null;
+          });
+          forecastDatasets.push({
+            label: pr + ' (proj avg)', data: grayData,
+            borderColor: '#9CA3AF', backgroundColor: '#9CA3AF10', borderWidth: 1.5,
+            borderDash: [3, 3], tension: 0.3,
+            pointRadius: grayData.map((v, idx) => (v !== null && idx === grayEndIdx) ? 3 : 0),
+            pointStyle: 'circle', fill: false, spanGaps: true
+          });
         }
       }
     });
@@ -5137,26 +5148,31 @@
         }
       }
 
-      // Gray dotted line: from forecast week (nwk) to projected average (nwk2)
+      // Gray dotted line: from last forecast point to one week further, trending to avg
       if (projAvg > 0) {
-        const nwIdx = avfWeeks.indexOf(nwk);
-        const nw2Idx = avfWeeks.indexOf(nwk2);
-        if (nwIdx >= 0 && nw2Idx >= 0) {
-          const forecastVal = fcasts[nwIdx] || (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
-          if (forecastVal > 0) {
-            const grayData = avfWeeks.map((w, idx) => {
-              if (idx === nwIdx) return forecastVal;
-              if (idx === nw2Idx) return projAvg;
-              return null;
-            });
-            datasets.push({
-              label: pr + ' (proj avg)', data: grayData,
-              borderColor: '#9CA3AF', backgroundColor: '#9CA3AF10', borderWidth: 1.5,
-              borderDash: [3, 3], tension: 0.3,
-              pointRadius: grayData.map((v, idx) => (v !== null && idx === nw2Idx) ? 3 : 0),
-              pointStyle: 'circle', fill: false, spanGaps: true
-            });
-          }
+        let lastFcIdx = -1;
+        let lastFcVal = 0;
+        avfWeeks.forEach((w, idx) => {
+          if (fcasts[idx] > 0 && idx > lastActualIdx) { lastFcIdx = idx; lastFcVal = fcasts[idx]; }
+        });
+        if (lastFcIdx < 0 && lastActualIdx >= 0) {
+          lastFcIdx = lastActualIdx;
+          lastFcVal = actuals[lastActualIdx];
+        }
+        const grayEndIdx = lastFcIdx >= 0 ? lastFcIdx + 1 : -1;
+        if (lastFcIdx >= 0 && grayEndIdx < avfWeeks.length && lastFcVal > 0) {
+          const grayData = avfWeeks.map((w, idx) => {
+            if (idx === lastFcIdx) return lastFcVal;
+            if (idx === grayEndIdx) return projAvg;
+            return null;
+          });
+          datasets.push({
+            label: pr + ' (proj avg)', data: grayData,
+            borderColor: '#9CA3AF', backgroundColor: '#9CA3AF10', borderWidth: 1.5,
+            borderDash: [3, 3], tension: 0.3,
+            pointRadius: grayData.map((v, idx) => (v !== null && idx === grayEndIdx) ? 3 : 0),
+            pointStyle: 'circle', fill: false, spanGaps: true
+          });
         }
       }
     });
