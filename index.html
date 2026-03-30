@@ -2120,7 +2120,7 @@
     <!-- My Actual vs Forecast -->
     <div class="insight-card" data-testid="my-forecast-card">
       <div class="insight-card-title">My Actual vs Forecast</div>
-      <div class="insight-card-subtitle">Each line shows one project — solid for logged actuals, then dashed where it shifts to forecast</div>
+      <div class="insight-card-subtitle">Solid = actuals, dashed = forecast, gray = trending to project average</div>
       <div class="chart-local-filters" id="my-avf-filters">
         <label>Project <select id="my-avf-project-filter"></select></label>
       </div>
@@ -2270,7 +2270,7 @@
       <!-- Actual vs Forecast Trend -->
       <div class="insight-card" style="margin-top:16px" data-testid="admin-avf-trend-card">
         <div class="insight-card-title">Actual vs Forecast Trend</div>
-        <div class="insight-card-subtitle">Each line shows one project — solid for logged actuals, then dashed where it shifts to forecast</div>
+        <div class="insight-card-subtitle">Solid = actuals, dashed = forecast, gray = trending to project average</div>
         <div class="chart-local-filters" id="admin-avf-filters">
           <label>Person <select id="admin-avf-person-filter"></select></label>
           <label>Project <select id="admin-avf-project-filter"></select></label>
@@ -3759,93 +3759,100 @@
     const allWeeks = getAllWeeksSorted();
     const cw = getCurrentWeek();
     const nw = getNextWeek(cw);
-    const avfWeeks = [...new Set([...allWeeks, nw])].sort();
+    const nw2 = getNextWeek(nw);
+    const avfWeeks = [...new Set([...allWeeks, nw, nw2])].sort();
+
+    function getProjectAvg(person, project) {
+      let total = 0, count = 0;
+      allWeeks.forEach(w => { const v = getEntry(w, person, project); if (v > 0) { total += v; count++; } });
+      return count > 0 ? Math.round(total / count) : 0;
+    }
 
     const forecastDatasets = [];
     effectiveProjects.forEach((pr, i) => {
       const actuals = avfWeeks.map(w => getEntry(w, currentPerson, pr));
       const fcasts = avfWeeks.map(w => getForecast(w, currentPerson, pr));
+      const projAvg = getProjectAvg(currentPerson, pr);
 
       const hasActual = actuals.some(v => v > 0);
       const hasForecast = fcasts.some(v => v > 0);
       if (!hasActual && !hasForecast) return;
 
       const color = CHART_COLORS[i % CHART_COLORS.length];
-
       let lastActualIdx = -1;
       actuals.forEach((v, idx) => { if (v > 0) lastActualIdx = idx; });
 
+      // Solid line: actuals
       if (hasActual) {
         forecastDatasets.push({
-          label: pr,
-          data: actuals.map((v, idx) => v > 0 ? v : null),
-          borderColor: color,
-          backgroundColor: color + '20',
-          borderWidth: 2,
-          tension: 0.3,
-          pointRadius: 3,
-          fill: false,
-          spanGaps: false
+          label: pr, data: actuals.map(v => v > 0 ? v : null),
+          borderColor: color, backgroundColor: color + '20', borderWidth: 2,
+          tension: 0.3, pointRadius: 3, fill: false, spanGaps: false
         });
       }
 
-      if (hasForecast) {
+      // Dashed line: forecast (bridge from last actual)
+      if (hasForecast && lastActualIdx >= 0) {
         const fData = avfWeeks.map((w, idx) => {
-          if (idx === lastActualIdx && lastActualIdx >= 0) return actuals[idx]; // bridge point
-          if (fcasts[idx] > 0) return fcasts[idx];
+          if (idx === lastActualIdx) return actuals[idx];
+          if (fcasts[idx] > 0 && idx > lastActualIdx) return fcasts[idx];
           return null;
         });
-        const hasBridgedData = fData.some(v => v !== null);
-        if (hasBridgedData) {
+        if (fData.some(v => v !== null)) {
           forecastDatasets.push({
-            label: hasActual ? pr + ' (forecast)' : pr,
-            data: fData,
-            borderColor: color,
-            backgroundColor: color + '10',
-            borderWidth: 2,
-            borderDash: [6, 4],
-            tension: 0.3,
+            label: pr + ' (forecast)', data: fData,
+            borderColor: color, backgroundColor: color + '10', borderWidth: 2,
+            borderDash: [6, 4], tension: 0.3,
             pointRadius: fData.map((v, idx) => (v !== null && idx !== lastActualIdx) ? 4 : 0),
-            pointStyle: 'triangle',
-            fill: false,
-            spanGaps: false
+            pointStyle: 'triangle', fill: false, spanGaps: false
           });
+        }
+      }
+
+      // Gray dotted line: forecast to projected average
+      if (projAvg > 0) {
+        const nwIdx = avfWeeks.indexOf(nw);
+        const nw2Idx = avfWeeks.indexOf(nw2);
+        if (nwIdx >= 0 && nw2Idx >= 0) {
+          const forecastVal = fcasts[nwIdx] || (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
+          if (forecastVal > 0) {
+            const grayData = avfWeeks.map((w, idx) => {
+              if (idx === nwIdx) return forecastVal;
+              if (idx === nw2Idx) return projAvg;
+              return null;
+            });
+            forecastDatasets.push({
+              label: pr + ' (proj avg)', data: grayData,
+              borderColor: '#9CA3AF', backgroundColor: '#9CA3AF10', borderWidth: 1.5,
+              borderDash: [3, 3], tension: 0.3,
+              pointRadius: grayData.map(v => v !== null ? 3 : 0),
+              pointStyle: 'circle', fill: false, spanGaps: false
+            });
+          }
         }
       }
     });
 
     if (forecastDatasets.length > 0) {
       createChart('my-forecast-chart', {
-        type: 'line',
-        data: {
-          labels: avfWeeks,
-          datasets: forecastDatasets
-        },
+        type: 'line', data: { labels: avfWeeks, datasets: forecastDatasets },
         options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          aspectRatio: 2,
+          responsive: true, maintainAspectRatio: true, aspectRatio: 2,
           scales: {
             y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#e5e7eb' } },
             x: { ticks: { font: { size: 10 } }, grid: { display: false } }
           },
           plugins: {
-            legend: {
-              position: 'bottom',
-              labels: {
-                font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12,
-                filter: (item) => !item.text.includes('(forecast)')
-              }
-            },
-            tooltip: {
-              callbacks: {
-                label: (ctx) => {
-                  const isFc = ctx.dataset.borderDash && ctx.dataset.borderDash.length > 0;
-                  const base = ctx.dataset.label.replace(' (forecast)', '');
-                  return `${base}: ${ctx.raw}% (${isFc ? 'forecast' : 'actual'})`;
-                }
-              }
-            }
+            legend: { position: 'bottom', labels: {
+              font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12,
+              filter: (item) => !item.text.includes('(forecast)') && !item.text.includes('(proj avg)')
+            }},
+            tooltip: { callbacks: { label: (ctx) => {
+              const lbl = ctx.dataset.label;
+              const base = lbl.replace(' (forecast)', '').replace(' (proj avg)', '');
+              const type = lbl.includes('(proj avg)') ? 'proj avg' : (lbl.includes('(forecast)') ? 'forecast' : 'actual');
+              return `${base}: ${ctx.raw}% (${type})`;
+            }}}
           }
         }
       });
@@ -5015,26 +5022,38 @@
     const allWeeks = getAllWeeksSorted();
     const cwk = getCurrentWeek();
     const nwk = getNextWeek(cwk);
-    const avfWeeks = [...new Set([...allWeeks, nwk])].sort();
+    const nwk2 = getNextWeek(nwk);
+    const avfWeeks = [...new Set([...allWeeks, nwk, nwk2])].sort();
 
     if (avfWeeks.length === 0 || effectiveProjects.length === 0) {
       destroyChart('admin-avf-trend-chart');
       return;
     }
 
+    function getTeamProjectAvg(project) {
+      let total = 0, count = 0;
+      allWeeks.forEach(w => {
+        effectivePeople.forEach(p => {
+          const v = getEntry(w, p, project);
+          if (v > 0) { total += v; count++; }
+        });
+      });
+      return count > 0 ? Math.round(total / count) : 0;
+    }
+
     const datasets = [];
+    const pplCount = effectivePeople.length || 1;
+
     effectiveProjects.forEach((pr, i) => {
       const color = CHART_COLORS[i % CHART_COLORS.length];
-      const pplCount = effectivePeople.length || 1;
+      const projAvg = getTeamProjectAvg(pr);
 
       const actuals = avfWeeks.map(w => {
-        let t = 0;
-        effectivePeople.forEach(p => { t += getEntry(w, p, pr); });
+        let t = 0; effectivePeople.forEach(p => { t += getEntry(w, p, pr); });
         return Math.round(t / pplCount);
       });
       const fcasts = avfWeeks.map(w => {
-        let t = 0;
-        effectivePeople.forEach(p => { t += getForecast(w, p, pr); });
+        let t = 0; effectivePeople.forEach(p => { t += getForecast(w, p, pr); });
         return Math.round(t / pplCount);
       });
 
@@ -5045,40 +5064,53 @@
       let lastActualIdx = -1;
       actuals.forEach((v, idx) => { if (v > 0) lastActualIdx = idx; });
 
+      // Solid line: actuals
       if (hasActual) {
         datasets.push({
-          label: pr,
-          data: actuals.map(v => v > 0 ? v : null),
-          borderColor: color,
-          backgroundColor: color + '20',
-          borderWidth: 2,
-          tension: 0.3,
-          pointRadius: 3,
-          fill: false,
-          spanGaps: false
+          label: pr, data: actuals.map(v => v > 0 ? v : null),
+          borderColor: color, backgroundColor: color + '20', borderWidth: 2,
+          tension: 0.3, pointRadius: 3, fill: false, spanGaps: false
         });
       }
 
-      if (hasForecast) {
+      // Dashed line: forecast (bridge from last actual)
+      if (hasForecast && lastActualIdx >= 0) {
         const fData = avfWeeks.map((w, idx) => {
-          if (idx === lastActualIdx && lastActualIdx >= 0) return actuals[idx]; // bridge
-          if (fcasts[idx] > 0) return fcasts[idx];
+          if (idx === lastActualIdx) return actuals[idx];
+          if (fcasts[idx] > 0 && idx > lastActualIdx) return fcasts[idx];
           return null;
         });
         if (fData.some(v => v !== null)) {
           datasets.push({
-            label: hasActual ? pr + ' (forecast)' : pr,
-            data: fData,
-            borderColor: color,
-            backgroundColor: color + '10',
-            borderWidth: 2,
-            borderDash: [6, 4],
-            tension: 0.3,
+            label: pr + ' (forecast)', data: fData,
+            borderColor: color, backgroundColor: color + '10', borderWidth: 2,
+            borderDash: [6, 4], tension: 0.3,
             pointRadius: fData.map((v, idx) => (v !== null && idx !== lastActualIdx) ? 4 : 0),
-            pointStyle: 'triangle',
-            fill: false,
-            spanGaps: false
+            pointStyle: 'triangle', fill: false, spanGaps: false
           });
+        }
+      }
+
+      // Gray dotted line: forecast to projected average
+      if (projAvg > 0) {
+        const nwIdx = avfWeeks.indexOf(nwk);
+        const nw2Idx = avfWeeks.indexOf(nwk2);
+        if (nwIdx >= 0 && nw2Idx >= 0) {
+          const forecastVal = fcasts[nwIdx] || (lastActualIdx >= 0 ? actuals[lastActualIdx] : 0);
+          if (forecastVal > 0) {
+            const grayData = avfWeeks.map((w, idx) => {
+              if (idx === nwIdx) return forecastVal;
+              if (idx === nw2Idx) return projAvg;
+              return null;
+            });
+            datasets.push({
+              label: pr + ' (proj avg)', data: grayData,
+              borderColor: '#9CA3AF', backgroundColor: '#9CA3AF10', borderWidth: 1.5,
+              borderDash: [3, 3], tension: 0.3,
+              pointRadius: grayData.map(v => v !== null ? 3 : 0),
+              pointStyle: 'circle', fill: false, spanGaps: false
+            });
+          }
         }
       }
     });
@@ -5089,36 +5121,24 @@
     }
 
     createChart('admin-avf-trend-chart', {
-      type: 'line',
-      data: {
-        labels: avfWeeks,
-        datasets: datasets
-      },
+      type: 'line', data: { labels: avfWeeks, datasets: datasets },
       options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        aspectRatio: 2,
+        responsive: true, maintainAspectRatio: true, aspectRatio: 2,
         scales: {
           y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 11 } }, grid: { color: '#e5e7eb' } },
           x: { ticks: { font: { size: 10 } }, grid: { display: false } }
         },
         plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12,
-              filter: (item) => !item.text.includes('(forecast)')
-            }
-          },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                const isFc = ctx.dataset.borderDash && ctx.dataset.borderDash.length > 0;
-                const base = ctx.dataset.label.replace(' (forecast)', '');
-                return `${base}: ${ctx.raw}% (${isFc ? 'forecast' : 'actual'})`;
-              }
-            }
-          }
+          legend: { position: 'bottom', labels: {
+            font: { family: "'Inter',sans-serif", size: 10 }, padding: 8, boxWidth: 12,
+            filter: (item) => !item.text.includes('(forecast)') && !item.text.includes('(proj avg)')
+          }},
+          tooltip: { callbacks: { label: (ctx) => {
+            const lbl = ctx.dataset.label;
+            const base = lbl.replace(' (forecast)', '').replace(' (proj avg)', '');
+            const type = lbl.includes('(proj avg)') ? 'proj avg' : (lbl.includes('(forecast)') ? 'forecast' : 'actual');
+            return `${base}: ${ctx.raw}% (${type})`;
+          }}}
         }
       }
     });
