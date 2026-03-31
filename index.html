@@ -2262,6 +2262,23 @@
         <div id="admin-notable-changes-content"></div>
       </div>
 
+      <!-- Actual vs Forecast Trend -->
+      <div class="insight-card" style="margin-top:16px" data-testid="admin-avf-trend-card">
+        <div class="insight-card-title">Actual vs Forecast Trend</div>
+        <div class="avf-legend">
+          <span class="avf-legend-item"><span class="avf-legend-line avf-solid"></span> Actual</span>
+          <span class="avf-legend-item"><span class="avf-legend-line avf-dashed"></span> Forecast</span>
+          <span class="avf-legend-item"><span class="avf-legend-line avf-gray"></span> Proj. Average</span>
+        </div>
+        <div class="chart-local-filters" id="admin-avf-filters">
+          <label>Person <select id="admin-avf-person-filter"></select></label>
+          <label>Project <select id="admin-avf-project-filter"></select></label>
+        </div>
+        <div class="chart-container">
+          <canvas id="admin-avf-trend-chart" data-testid="admin-avf-trend-chart"></canvas>
+        </div>
+      </div>
+
       <!-- Person Breakdown + Project Share -->
       <div class="insights-grid">
         <div class="insight-card" data-testid="admin-breakdown-card">
@@ -2298,22 +2315,6 @@
       </div>
 
       <!-- Actual vs Forecast Trend -->
-      <div class="insight-card" style="margin-top:16px" data-testid="admin-avf-trend-card">
-        <div class="insight-card-title">Actual vs Forecast Trend</div>
-        <div class="avf-legend">
-          <span class="avf-legend-item"><span class="avf-legend-line avf-solid"></span> Actual</span>
-          <span class="avf-legend-item"><span class="avf-legend-line avf-dashed"></span> Forecast</span>
-          <span class="avf-legend-item"><span class="avf-legend-line avf-gray"></span> Proj. Average</span>
-        </div>
-        <div class="chart-local-filters" id="admin-avf-filters">
-          <label>Person <select id="admin-avf-person-filter"></select></label>
-          <label>Project <select id="admin-avf-project-filter"></select></label>
-        </div>
-        <div class="chart-container">
-          <canvas id="admin-avf-trend-chart" data-testid="admin-avf-trend-chart"></canvas>
-        </div>
-      </div>
-
       <!-- Forecast Divergence -->
       <div class="insight-card" style="margin-top:16px" data-testid="admin-divergence-card">
         <div class="insight-card-title">Forecast Divergence</div>
@@ -5031,15 +5032,22 @@
   }
 
   function renderAdminTrend(filteredPeople, filteredProjects) {
+    // Only show weeks that have actual entries (stop at current week, no zeros trailing)
     const allWeeks = getAllWeeksSorted();
+    const cw = getCurrentWeek();
+    const weeksWithActuals = allWeeks.filter(w => {
+      if (w > cw) return false; // exclude future weeks
+      // Check if ANY person has ANY entry > 0 for this week
+      return filteredPeople.some(p => filteredProjects.some(pr => getEntry(w, p, pr) > 0));
+    });
 
-    if (allWeeks.length === 0 || filteredProjects.length === 0) {
+    if (weeksWithActuals.length === 0 || filteredProjects.length === 0) {
       destroyChart('admin-trend-chart');
       return;
     }
 
     const datasets = filteredProjects.map((pr, i) => {
-      const data = allWeeks.map(w => {
+      const data = weeksWithActuals.map(w => {
         let total = 0;
         filteredPeople.forEach(person => {
           total += getEntry(w, person, pr);
@@ -5050,13 +5058,14 @@
       if (!hasData) return null;
       return {
         label: pr,
-        data: data,
+        data: data.map(v => v > 0 ? v : null),
         borderColor: CHART_COLORS[i % CHART_COLORS.length],
         backgroundColor: CHART_COLORS[i % CHART_COLORS.length] + '20',
         borderWidth: 2,
         tension: 0.3,
         pointRadius: 3,
-        fill: false
+        fill: false,
+        spanGaps: false
       };
     }).filter(Boolean);
 
@@ -5068,7 +5077,7 @@
     createChart('admin-trend-chart', {
       type: 'line',
       data: {
-        labels: allWeeks,
+        labels: weeksWithActuals,
         datasets: datasets
       },
       options: {
