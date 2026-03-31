@@ -2262,23 +2262,6 @@
         <div id="admin-notable-changes-content"></div>
       </div>
 
-      <!-- Actual vs Forecast Trend -->
-      <div class="insight-card" style="margin-top:16px" data-testid="admin-avf-trend-card">
-        <div class="insight-card-title">Actual vs Forecast Trend</div>
-        <div class="avf-legend">
-          <span class="avf-legend-item"><span class="avf-legend-line avf-solid"></span> Actual</span>
-          <span class="avf-legend-item"><span class="avf-legend-line avf-dashed"></span> Forecast</span>
-          <span class="avf-legend-item"><span class="avf-legend-line avf-gray"></span> Proj. Average</span>
-        </div>
-        <div class="chart-local-filters" id="admin-avf-filters">
-          <label>Person <select id="admin-avf-person-filter"></select></label>
-          <label>Project <select id="admin-avf-project-filter"></select></label>
-        </div>
-        <div class="chart-container">
-          <canvas id="admin-avf-trend-chart" data-testid="admin-avf-trend-chart"></canvas>
-        </div>
-      </div>
-
       <!-- Person Breakdown + Project Share -->
       <div class="insights-grid">
         <div class="insight-card" data-testid="admin-breakdown-card">
@@ -2294,6 +2277,23 @@
           <div class="chart-container">
             <canvas id="admin-pie-chart" data-testid="admin-pie-chart"></canvas>
           </div>
+        </div>
+      </div>
+
+      <!-- Actual vs Forecast Trend -->
+      <div class="insight-card" style="margin-top:16px" data-testid="admin-avf-trend-card">
+        <div class="insight-card-title">Actual vs Forecast Trend</div>
+        <div class="avf-legend">
+          <span class="avf-legend-item"><span class="avf-legend-line avf-solid"></span> Actual</span>
+          <span class="avf-legend-item"><span class="avf-legend-line avf-dashed"></span> Forecast</span>
+          <span class="avf-legend-item"><span class="avf-legend-line avf-gray"></span> Proj. Average</span>
+        </div>
+        <div class="chart-local-filters" id="admin-avf-filters">
+          <label>Person <select id="admin-avf-person-filter"></select></label>
+          <label>Project <select id="admin-avf-project-filter"></select></label>
+        </div>
+        <div class="chart-container">
+          <canvas id="admin-avf-trend-chart" data-testid="admin-avf-trend-chart"></canvas>
         </div>
       </div>
 
@@ -3058,9 +3058,9 @@
       });
     }
 
-    // Sort by score descending, dedup already handled, return max 9
+    // Sort by score descending, dedup already handled, return max 12
     insights.sort((a, b) => b.score - a.score);
-    return insights.slice(0, 9);
+    return insights.slice(0, 12);
   }
 
   function renderInsightsHTML(containerId, changes) {
