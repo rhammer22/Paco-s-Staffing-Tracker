@@ -1130,9 +1130,44 @@
   }
 
   .insights-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+  }
+
+  @media (max-width: 700px) {
+    .insights-list { grid-template-columns: 1fr; }
+  }
+
+  .capacity-list {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 6px;
+  }
+
+  .capacity-row {
+    display: flex;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    background: #f0fdf4;
+    border-left: 3px solid #22c55e;
+  }
+
+  .capacity-row .insight-person {
+    color: #16a34a;
+  }
+
+  .capacity-reason {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    margin-top: 2px;
+  }
+
+  .capacity-accuracy {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    margin-top: 2px;
   }
 
   .insight-row {
@@ -2262,6 +2297,13 @@
         <div id="admin-notable-changes-content"></div>
       </div>
 
+      <!-- Potential Capacity -->
+      <div class="insight-card" style="margin-top:16px" data-testid="admin-capacity-card">
+        <div class="insight-card-title">Potential Capacity</div>
+        <div class="insight-card-subtitle">Team members who may be able to take on additional work based on forecast trends and accuracy</div>
+        <div id="admin-capacity-content"></div>
+      </div>
+
       <!-- Person Breakdown + Project Share -->
       <div class="insights-grid">
         <div class="insight-card" data-testid="admin-breakdown-card">
@@ -2990,77 +3032,113 @@
       }
     }
 
-    // J) Capacity Indicator (admin/Paco only) — who may have bandwidth for new work
-    if (!singlePerson) {
-      const nextWeek = getNextWeek(week);
-      effectivePeople.forEach(person => {
-        // 1. Forecast total for next week
-        let fcTotal = 0;
-        effectiveProjects.forEach(pr => { fcTotal += getForecast(nextWeek, person, pr); });
+    // Sort by score descending, dedup already handled, return max 7
+    insights.sort((a, b) => b.score - a.score);
+    return insights.slice(0, 7);
+  }
 
-        // 2. Projects forecasting down significantly (freeing up time)
-        const windingDown = [];
-        effectiveProjects.forEach(pr => {
-          const curVal = getEntry(week, person, pr);
-          const fcVal = getForecast(nextWeek, person, pr);
-          const drop = curVal - fcVal;
-          if (curVal >= 10 && drop >= 10) {
-            windingDown.push({ project: pr, from: curVal, to: fcVal, drop });
-          }
-        });
+  // ─── Capacity Analysis (admin/Paco only) ───
+  function generateCapacityInsights(week, people, projects) {
+    const results = [];
+    if (!appData || !week || week === 'all') return results;
 
-        // 3. Estimation accuracy (how reliable is this person's forecast?)
-        let errTotal = 0, errCount = 0;
-        priorWeeks.forEach(w => {
-          effectiveProjects.forEach(pr => {
-            const actual = getEntry(w, person, pr);
-            const forecast = getForecast(w, person, pr);
-            if (actual > 0 || forecast > 0) {
-              errTotal += Math.abs(actual - forecast);
-              errCount++;
-            }
-          });
-        });
-        const avgErr = errCount > 0 ? Math.round(errTotal / errCount) : null;
+    const allWeeks = getAllWeeksSorted();
+    const priorWeeks = allWeeks.filter(w => w < week);
+    const nextWeek = getNextWeek(week);
+    const effectivePeople = people || appData.people || [];
+    const effectiveProjects = projects || appData.projects || [];
 
-        // Build capacity insight if there are signals
-        const signals = [];
-        let score = 0;
+    effectivePeople.forEach(person => {
+      // Current week total
+      let curTotal = 0;
+      effectiveProjects.forEach(pr => { curTotal += getEntry(week, person, pr); });
 
-        if (fcTotal < 100 && fcTotal > 0) {
-          signals.push(`forecasting ${fcTotal}% next week (${100 - fcTotal}pp open)`);
-          score += (100 - fcTotal);
-        }
+      // Forecast total for next week
+      let fcTotal = 0;
+      effectiveProjects.forEach(pr => { fcTotal += getForecast(nextWeek, person, pr); });
 
-        if (windingDown.length > 0) {
-          const totalFreed = windingDown.reduce((s, w) => s + w.drop, 0);
-          const projNames = windingDown.map(w => `${w.project} (-${w.drop}pp)`).join(', ');
-          signals.push(`winding down: ${projNames}`);
-          score += totalFreed;
-        }
+      // Historical average total
+      const priorTotals = priorWeeks.map(w => {
+        let t = 0; effectiveProjects.forEach(pr => { t += getEntry(w, person, pr); }); return t;
+      }).filter(v => v > 0);
+      const avgTotal = priorTotals.length > 0 ? Math.round(priorTotals.reduce((a, b) => a + b, 0) / priorTotals.length) : 0;
 
-        if (signals.length > 0) {
-          const title = `${person} may have capacity`;
-          let detail = signals.join(' \u00B7 ');
-          if (avgErr !== null) {
-            detail += ` \u00B7 Forecast accuracy: \u00B1${avgErr}pp avg error`;
-          }
-          const question = `Could ${person.split(' ')[0]} take on additional project work?`;
-          addInsight('capacity', person, null, {
-            icon: '\u{1F4AA}',
-            person: person,
-            title,
-            detail,
-            question,
-            score: score
-          });
+      // Projects forecasting down
+      const windingDown = [];
+      effectiveProjects.forEach(pr => {
+        const curVal = getEntry(week, person, pr);
+        const fcVal = getForecast(nextWeek, person, pr);
+        const drop = curVal - fcVal;
+        if (curVal >= 10 && drop >= 8) {
+          windingDown.push({ project: pr, from: curVal, to: fcVal, drop });
         }
       });
-    }
 
-    // Sort by score descending, dedup already handled, return max 12
-    insights.sort((a, b) => b.score - a.score);
-    return insights.slice(0, 12);
+      // Forecast accuracy
+      let errTotal = 0, errCount = 0;
+      priorWeeks.forEach(w => {
+        effectiveProjects.forEach(pr => {
+          const actual = getEntry(w, person, pr);
+          const forecast = getForecast(w, person, pr);
+          if (actual > 0 || forecast > 0) { errTotal += Math.abs(actual - forecast); errCount++; }
+        });
+      });
+      const avgErr = errCount > 0 ? Math.round(errTotal / errCount) : null;
+
+      // Trend: is their total going down?
+      const trendDown = fcTotal > 0 && fcTotal < curTotal && (curTotal - fcTotal) >= 5;
+
+      // Build reasons
+      const reasons = [];
+      let score = 0;
+
+      if (fcTotal > 0 && fcTotal < 100) {
+        reasons.push(`Forecasting ${fcTotal}% next week (${100 - fcTotal}pp available)`);
+        score += (100 - fcTotal) * 2;
+      }
+
+      if (windingDown.length > 0) {
+        windingDown.sort((a, b) => b.drop - a.drop);
+        windingDown.forEach(w => {
+          reasons.push(`${w.project}: ${w.from}% \u2192 ${w.to}% next week (-${w.drop}pp)`);
+          score += w.drop;
+        });
+      }
+
+      if (trendDown && windingDown.length === 0) {
+        reasons.push(`Total forecast trending down: ${curTotal}% \u2192 ${fcTotal}%`);
+        score += (curTotal - fcTotal);
+      }
+
+      if (reasons.length > 0) {
+        results.push({
+          person,
+          reasons,
+          score,
+          avgErr,
+          fcTotal,
+          curTotal
+        });
+      }
+    });
+
+    results.sort((a, b) => b.score - a.score);
+    return results;
+  }
+
+  function renderCapacityHTML(containerId, capacityData) {
+    const container = $(containerId);
+    if (!container) return;
+    if (!capacityData || capacityData.length === 0) {
+      container.innerHTML = '<div class="insights-empty">No capacity signals detected for this period</div>';
+      return;
+    }
+    container.innerHTML = '<div class="capacity-list">' +
+      capacityData.map(c => {
+        const reasonsHtml = c.reasons.map(r => `<div class="capacity-reason">\u2022 ${r}</div>`).join('');
+        const accHtml = c.avgErr !== null ? `<div class="capacity-accuracy">Forecast reliability: \u00B1${c.avgErr}pp avg error</div>` : '';
+        return `<div class="capacity-row"><div class="insight-body"><div class="insight-person">${c.person}</div><div class="insight-title">${c.person.split(' ')[0]} may have bandwidth</div>${reasonsHtml}${accHtml}</div></div>`;
+      }).join('') + '</div>';
   }
 
   function renderInsightsHTML(containerId, changes) {
@@ -4698,6 +4776,8 @@
     renderAdminNotLogged(selectedWeek, people, mode);
     const adminInsights = generateInsights(selectedWeek, filteredPeople, filteredProjects, null);
     renderInsightsHTML('admin-notable-changes-content', adminInsights);
+    const capacityData = generateCapacityInsights(selectedWeek, filteredPeople, filteredProjects);
+    renderCapacityHTML('admin-capacity-content', capacityData);
     renderAdminBreakdown(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminPieChart(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminProjectStaffing(selectedWeek, filteredPeople, filteredProjects, mode);
