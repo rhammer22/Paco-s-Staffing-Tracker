@@ -2989,9 +2989,77 @@
       }
     }
 
-    // Sort by score descending, dedup already handled, return max 7
+    // J) Capacity Indicator (admin/Paco only) — who may have bandwidth for new work
+    if (!singlePerson) {
+      const nextWeek = getNextWeek(week);
+      effectivePeople.forEach(person => {
+        // 1. Forecast total for next week
+        let fcTotal = 0;
+        effectiveProjects.forEach(pr => { fcTotal += getForecast(nextWeek, person, pr); });
+
+        // 2. Projects forecasting down significantly (freeing up time)
+        const windingDown = [];
+        effectiveProjects.forEach(pr => {
+          const curVal = getEntry(week, person, pr);
+          const fcVal = getForecast(nextWeek, person, pr);
+          const drop = curVal - fcVal;
+          if (curVal >= 10 && drop >= 10) {
+            windingDown.push({ project: pr, from: curVal, to: fcVal, drop });
+          }
+        });
+
+        // 3. Estimation accuracy (how reliable is this person's forecast?)
+        let errTotal = 0, errCount = 0;
+        priorWeeks.forEach(w => {
+          effectiveProjects.forEach(pr => {
+            const actual = getEntry(w, person, pr);
+            const forecast = getForecast(w, person, pr);
+            if (actual > 0 || forecast > 0) {
+              errTotal += Math.abs(actual - forecast);
+              errCount++;
+            }
+          });
+        });
+        const avgErr = errCount > 0 ? Math.round(errTotal / errCount) : null;
+
+        // Build capacity insight if there are signals
+        const signals = [];
+        let score = 0;
+
+        if (fcTotal < 100 && fcTotal > 0) {
+          signals.push(`forecasting ${fcTotal}% next week (${100 - fcTotal}pp open)`);
+          score += (100 - fcTotal);
+        }
+
+        if (windingDown.length > 0) {
+          const totalFreed = windingDown.reduce((s, w) => s + w.drop, 0);
+          const projNames = windingDown.map(w => `${w.project} (-${w.drop}pp)`).join(', ');
+          signals.push(`winding down: ${projNames}`);
+          score += totalFreed;
+        }
+
+        if (signals.length > 0) {
+          const title = `${person} may have capacity`;
+          let detail = signals.join(' \u00B7 ');
+          if (avgErr !== null) {
+            detail += ` \u00B7 Forecast accuracy: \u00B1${avgErr}pp avg error`;
+          }
+          const question = `Could ${person.split(' ')[0]} take on additional project work?`;
+          addInsight('capacity', person, null, {
+            icon: '\u{1F4AA}',
+            person: person,
+            title,
+            detail,
+            question,
+            score: score
+          });
+        }
+      });
+    }
+
+    // Sort by score descending, dedup already handled, return max 9
     insights.sort((a, b) => b.score - a.score);
-    return insights.slice(0, 7);
+    return insights.slice(0, 9);
   }
 
   function renderInsightsHTML(containerId, changes) {
