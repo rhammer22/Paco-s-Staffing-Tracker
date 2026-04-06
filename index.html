@@ -2297,13 +2297,6 @@
         <div id="admin-notable-changes-content"></div>
       </div>
 
-      <!-- Potential Capacity -->
-      <div class="insight-card" style="margin-top:16px" data-testid="admin-capacity-card">
-        <div class="insight-card-title">Potential Capacity</div>
-        <div class="insight-card-subtitle">Team members who may be able to take on additional work based on forecast trends and accuracy</div>
-        <div id="admin-capacity-content"></div>
-      </div>
-
       <!-- Person Breakdown + Project Share -->
       <div class="insights-grid">
         <div class="insight-card" data-testid="admin-breakdown-card">
@@ -4776,8 +4769,6 @@
     renderAdminNotLogged(selectedWeek, people, mode);
     const adminInsights = generateInsights(selectedWeek, filteredPeople, filteredProjects, null);
     renderInsightsHTML('admin-notable-changes-content', adminInsights);
-    const capacityData = generateCapacityInsights(selectedWeek, filteredPeople, filteredProjects);
-    renderCapacityHTML('admin-capacity-content', capacityData);
     renderAdminBreakdown(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminPieChart(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminProjectStaffing(selectedWeek, filteredPeople, filteredProjects, mode);
