@@ -3219,28 +3219,31 @@
     }
   }
 
-  // Plugin: draw project name at the end of each actual line
+  // Plugin: draw project name above the forecast (dashed) data point
   const endLabelPlugin = {
     id: 'endLabels',
     afterDatasetsDraw(chart) {
       if (!chart.config._config?.options?.plugins?.endLabels?.enabled) return;
       const ctx2 = chart.ctx;
       chart.data.datasets.forEach((ds, i) => {
-        if (ds.borderDash && ds.borderDash.length > 0) return;
-        if (ds.label && (ds.label.includes('(forecast)') || ds.label.includes('(proj avg)'))) return;
+        // Only label forecast lines (dashed, with '(forecast)' in name)
+        if (!ds.label || !ds.label.includes('(forecast)')) return;
+        if (!ds.borderDash || ds.borderDash.length === 0) return;
         const meta = chart.getDatasetMeta(i);
         if (meta.hidden) return;
+        // Find the last non-null forecast point (not the bridge point)
         let lastPt = null;
         for (let j = meta.data.length - 1; j >= 0; j--) {
           if (ds.data[j] !== null && ds.data[j] !== undefined) { lastPt = meta.data[j]; break; }
         }
         if (!lastPt) return;
+        const label = ds.label.replace(' (forecast)', '');
         ctx2.save();
         ctx2.font = '10px Inter, sans-serif';
         ctx2.fillStyle = ds.borderColor || '#333';
-        ctx2.textAlign = 'left';
-        ctx2.textBaseline = 'middle';
-        ctx2.fillText(ds.label, lastPt.x + 6, lastPt.y);
+        ctx2.textAlign = 'center';
+        ctx2.textBaseline = 'bottom';
+        ctx2.fillText(label, lastPt.x, lastPt.y - 8);
         ctx2.restore();
       });
     }
