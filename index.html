@@ -1486,6 +1486,67 @@
     padding-left: 2px;
   }
 
+  .capacity-check-card {
+    background: white;
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    padding: 14px 16px;
+    margin-bottom: 12px;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .capacity-check-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 8px;
+  }
+  .capacity-check-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .capacity-check-btn {
+    padding: 6px 16px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+  }
+  .capacity-check-btn.active { background: #22c55e; color: white; border-color: #22c55e; }
+  .capacity-check-btn.active-no { background: var(--color-text-muted); color: white; border-color: var(--color-text-muted); }
+  .capacity-comment-box { display: none; margin-top: 8px; }
+  .capacity-comment-box.visible { display: block; }
+  .capacity-comment-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-family: inherit;
+    resize: none;
+    box-sizing: border-box;
+  }
+  .capacity-comment-input:focus { outline: none; border-color: var(--color-accent); }
+  .capacity-responses { display: flex; flex-direction: column; gap: 6px; }
+  .capacity-response-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid #d1d5db;
+  }
+  .capacity-response-row.has-capacity { background: #f0fdf4; border-left-color: #22c55e; }
+  .capacity-response-row.no-capacity { background: var(--color-bg); }
+  .capacity-response-name { font-weight: 600; font-size: 13px; min-width: 140px; }
+  .capacity-response-status { font-size: 12px; color: var(--color-text-secondary); }
+  .capacity-response-comment { font-size: 12px; color: var(--color-text); font-style: italic; margin-top: 2px; }
+
   /* ─── Entry Grid: shared column template ─── */
   .entry-grid-cols {
     display: grid;
@@ -2104,6 +2165,17 @@
     </a>
   </div>
 
+  <div class="capacity-check-card" id="capacity-check-card">
+    <div class="capacity-check-title">Do you expect to have additional capacity in the next 2 weeks?</div>
+    <div class="capacity-check-toggle">
+      <button class="capacity-check-btn" id="capacity-yes-btn">Yes</button>
+      <button class="capacity-check-btn" id="capacity-no-btn">No</button>
+    </div>
+    <div class="capacity-comment-box" id="capacity-comment-box">
+      <textarea class="capacity-comment-input" id="capacity-comment" rows="2" placeholder="Any details? (e.g., wrapping up a project next week, ~20% available)"></textarea>
+    </div>
+  </div>
+
   <div id="overdue-banner" class="overdue-banner" style="display:none;"></div>
 
   <div class="entry-card">
@@ -2295,6 +2367,13 @@
         <div class="insight-card-title">Insights</div>
         <div class="insight-card-subtitle">Key changes vs. averages with suggested discussion points</div>
         <div id="admin-notable-changes-content"></div>
+      </div>
+
+      <!-- Team Capacity Check -->
+      <div class="insight-card" style="margin-top:16px" data-testid="admin-capacity-responses-card">
+        <div class="insight-card-title">Team Capacity Check</div>
+        <div class="insight-card-subtitle">Self-reported availability for additional work in the next 2 weeks</div>
+        <div id="admin-capacity-responses"></div>
       </div>
 
       <!-- Person Breakdown + Project Share -->
@@ -3374,6 +3453,7 @@
     renderProjectList();
     updateTotal();
     checkOverdueBanner();
+    loadCapacityCheck();
     showScreen('app');
   }
 
@@ -3440,6 +3520,109 @@
         banner.style.display = 'none';
       });
     });
+  }
+
+  // --- Capacity Check ---
+  function setCapacity(hasCapacity) {
+    if (!currentPerson || !appData) return;
+    const yesBtn = $('capacity-yes-btn');
+    const noBtn = $('capacity-no-btn');
+    const commentBox = $('capacity-comment-box');
+    
+    yesBtn.classList.toggle('active', hasCapacity);
+    noBtn.classList.toggle('active-no', !hasCapacity);
+    commentBox.classList.toggle('visible', hasCapacity);
+    
+    if (!appData.capacityChecks) appData.capacityChecks = {};
+    if (!appData.capacityChecks[currentPerson]) appData.capacityChecks[currentPerson] = {};
+    appData.capacityChecks[currentPerson].hasCapacity = hasCapacity;
+    appData.capacityChecks[currentPerson].updatedWeek = getCurrentWeek();
+    if (!hasCapacity) {
+      appData.capacityChecks[currentPerson].comment = '';
+      if ($('capacity-comment')) $('capacity-comment').value = '';
+    }
+    saveCapacityDebounced();
+  }
+  window.setCapacity = setCapacity;
+
+  let capacitySaveTimer = null;
+  function saveCapacityDebounced() {
+    clearTimeout(capacitySaveTimer);
+    capacitySaveTimer = setTimeout(saveCapacity, 1000);
+  }
+
+  async function saveCapacity() {
+    if (!currentPerson || !appData) return;
+    const ci = $('capacity-comment');
+    if (ci && appData.capacityChecks && appData.capacityChecks[currentPerson]) {
+      appData.capacityChecks[currentPerson].comment = ci.value.trim();
+    }
+    try {
+      await fetch('https://vzshpzfuywhbvnblywzo.supabase.co/rest/v1/tracker_store?id=eq.time-tracker-v2', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': 'sb_publishable_MFH8SdH_jS9fSrJ_g-T4Rw_vwB7WKPv',
+          'Authorization': 'Bearer sb_publishable_MFH8SdH_jS9fSrJ_g-T4Rw_vwB7WKPv',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ data: appData })
+      });
+    } catch (e) { console.error('Failed to save capacity:', e); }
+  }
+
+  function loadCapacityCheck() {
+    const yesBtn = $('capacity-yes-btn');
+    const noBtn = $('capacity-no-btn');
+    const commentBox = $('capacity-comment-box');
+    const ci = $('capacity-comment');
+    if (!yesBtn || !currentPerson || !appData) return;
+    const myCheck = (appData.capacityChecks || {})[currentPerson];
+    if (myCheck && myCheck.updatedWeek) {
+      yesBtn.classList.toggle('active', myCheck.hasCapacity === true);
+      noBtn.classList.toggle('active-no', myCheck.hasCapacity === false);
+      commentBox.classList.toggle('visible', myCheck.hasCapacity === true);
+      if (ci) ci.value = myCheck.comment || '';
+    } else {
+      yesBtn.classList.remove('active');
+      noBtn.classList.remove('active-no');
+      commentBox.classList.remove('visible');
+      if (ci) ci.value = '';
+    }
+  }
+
+  // Wire up button clicks and comment input
+  (function() {
+    const yb = $('capacity-yes-btn');
+    const nb = $('capacity-no-btn');
+    const cc = $('capacity-comment');
+    if (yb) yb.addEventListener('click', () => setCapacity(true));
+    if (nb) nb.addEventListener('click', () => setCapacity(false));
+    if (cc) cc.addEventListener('input', saveCapacityDebounced);
+  })();
+
+  function renderCapacityResponses(containerId) {
+    const container = $(containerId);
+    if (!container || !appData) return;
+    const checks = appData.capacityChecks || {};
+    const people = appData.people || [];
+    const cw = getCurrentWeek();
+    const pw = getPrevWeek(cw);
+    if (people.length === 0) { container.innerHTML = '<div class="insights-empty">No responses yet</div>'; return; }
+    let html = '<div class="capacity-responses">';
+    people.forEach(person => {
+      const check = checks[person];
+      const isRecent = check && (check.updatedWeek === cw || check.updatedWeek === pw);
+      if (!check || !isRecent) {
+        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No response</div></div></div>';
+      } else if (check.hasCapacity) {
+        html += '<div class="capacity-response-row has-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">Yes \u2014 has capacity</div>' + (check.comment ? '<div class="capacity-response-comment">\u201C' + check.comment + '\u201D</div>' : '') + '</div></div>';
+      } else {
+        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No \u2014 fully allocated</div></div></div>';
+      }
+    });
+    html += '</div>';
+    container.innerHTML = html;
   }
 
   // ─── Week Selector ───
@@ -4802,6 +4985,7 @@
     renderAdminNotLogged(selectedWeek, people, mode);
     const adminInsights = generateInsights(selectedWeek, filteredPeople, filteredProjects, null);
     renderInsightsHTML('admin-notable-changes-content', adminInsights);
+    renderCapacityResponses('admin-capacity-responses');
     renderAdminBreakdown(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminPieChart(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminProjectStaffing(selectedWeek, filteredPeople, filteredProjects, mode);
