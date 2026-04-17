@@ -2166,7 +2166,7 @@
   </div>
 
   <div class="capacity-check-card" id="capacity-check-card">
-    <div class="capacity-check-title">Do you expect to have additional capacity in the next 2 weeks?</div>
+    <div class="capacity-check-title">Do you expect to have additional capacity in the next 2 weeks? <span style="font-size:10px;color:#ef4444;font-weight:400">Required</span></div>
     <div class="capacity-check-toggle">
       <button class="capacity-check-btn" id="capacity-yes-btn">Yes</button>
       <button class="capacity-check-btn" id="capacity-no-btn">No</button>
@@ -3808,6 +3808,18 @@
   }
 
   async function performSave() {
+    // Check capacity question is answered
+    const capChecks = (appData.capacityChecks || {})[currentPerson];
+    if (!capChecks || capChecks.hasCapacity === undefined || capChecks.hasCapacity === null) {
+      const card = $('capacity-check-card');
+      if (card) {
+        card.style.border = '2px solid #ef4444';
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => { card.style.border = ''; }, 3000);
+      }
+      showToast('Please answer the capacity question before saving');
+      return;
+    }
     setSaveBtnsState('Saving...', null, true);
     showLoading(true);
 
