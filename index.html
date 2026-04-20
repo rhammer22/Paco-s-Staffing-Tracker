@@ -2174,6 +2174,24 @@
     <div class="capacity-comment-box" id="capacity-comment-box">
       <textarea class="capacity-comment-input" id="capacity-comment" rows="2" placeholder="Any details? (e.g., wrapping up a project next week, ~20% available)"></textarea>
     </div>
+    <div style="border-top:1px solid var(--color-border-light);margin-top:12px;padding-top:12px">
+      <div class="capacity-check-title">Were you on vacation/out this week? <span style="font-size:10px;color:#ef4444;font-weight:400">Required</span></div>
+      <div class="capacity-check-toggle">
+        <button class="capacity-check-btn" id="vacation-yes-btn">Yes</button>
+        <button class="capacity-check-btn" id="vacation-no-btn">No</button>
+      </div>
+      <div class="capacity-comment-box" id="vacation-days-box">
+        <label style="font-size:12px;color:var(--color-text-secondary)">How many days?
+          <select id="vacation-days" style="margin-left:6px;padding:4px 8px;border:1px solid var(--color-border);border-radius:var(--radius-sm);font-size:12px">
+            <option value="1">1 day</option>
+            <option value="2">2 days</option>
+            <option value="3">3 days</option>
+            <option value="4">4 days</option>
+            <option value="5">5 days (full week)</option>
+          </select>
+        </label>
+      </div>
+    </div>
   </div>
 
   <div id="overdue-banner" class="overdue-banner" style="display:none;"></div>
@@ -3298,31 +3316,43 @@
     }
   }
 
-  // Plugin: draw project name above the forecast (dashed) data point
+  // Plugin: draw project name above the forecast (dashed) data point, with collision avoidance
   const endLabelPlugin = {
     id: 'endLabels',
     afterDatasetsDraw(chart) {
       if (!chart.config._config?.options?.plugins?.endLabels?.enabled) return;
       const ctx2 = chart.ctx;
+      // Collect all label positions first
+      const labels = [];
       chart.data.datasets.forEach((ds, i) => {
-        // Only label forecast lines (dashed, with '(forecast)' in name)
         if (!ds.label || !ds.label.includes('(forecast)')) return;
         if (!ds.borderDash || ds.borderDash.length === 0) return;
         const meta = chart.getDatasetMeta(i);
         if (meta.hidden) return;
-        // Find the last non-null forecast point (not the bridge point)
         let lastPt = null;
         for (let j = meta.data.length - 1; j >= 0; j--) {
           if (ds.data[j] !== null && ds.data[j] !== undefined) { lastPt = meta.data[j]; break; }
         }
         if (!lastPt) return;
-        const label = ds.label.replace(' (forecast)', '');
+        labels.push({ text: ds.label.replace(' (forecast)', ''), x: lastPt.x, y: lastPt.y - 10, color: ds.borderColor || '#333' });
+      });
+      // Sort by y position and nudge overlapping labels apart
+      labels.sort((a, b) => a.y - b.y);
+      for (let i = 1; i < labels.length; i++) {
+        const gap = labels[i].y - labels[i - 1].y;
+        if (Math.abs(gap) < 14) {
+          labels[i - 1].y -= 7;
+          labels[i].y += 7;
+        }
+      }
+      // Draw
+      labels.forEach(lbl => {
         ctx2.save();
         ctx2.font = '10px Inter, sans-serif';
-        ctx2.fillStyle = ds.borderColor || '#333';
+        ctx2.fillStyle = lbl.color;
         ctx2.textAlign = 'center';
         ctx2.textBaseline = 'bottom';
-        ctx2.fillText(label, lastPt.x, lastPt.y - 8);
+        ctx2.fillText(lbl.text, lbl.x, lbl.y);
         ctx2.restore();
       });
     }
@@ -3454,6 +3484,7 @@
     updateTotal();
     checkOverdueBanner();
     loadCapacityCheck();
+    loadVacationCheck();
     showScreen('app');
   }
 
@@ -3591,6 +3622,45 @@
     }
   }
 
+  // --- Vacation Check ---
+  function setVacation(wasOut) {
+    if (!currentPerson || !appData) return;
+    const yb = $('vacation-yes-btn');
+    const nb = $('vacation-no-btn');
+    const dbox = $('vacation-days-box');
+    yb.classList.toggle('active', wasOut);
+    nb.classList.toggle('active-no', !wasOut);
+    dbox.classList.toggle('visible', wasOut);
+    if (!appData.vacationChecks) appData.vacationChecks = {};
+    if (!appData.vacationChecks[currentPerson]) appData.vacationChecks[currentPerson] = {};
+    appData.vacationChecks[currentPerson].wasOut = wasOut;
+    appData.vacationChecks[currentPerson].updatedWeek = getCurrentWeek();
+    if (!wasOut) appData.vacationChecks[currentPerson].days = 0;
+    else appData.vacationChecks[currentPerson].days = parseInt($('vacation-days').value) || 1;
+    saveCapacityDebounced();
+  }
+  window.setVacation = setVacation;
+
+  function loadVacationCheck() {
+    const yb = $('vacation-yes-btn');
+    const nb = $('vacation-no-btn');
+    const dbox = $('vacation-days-box');
+    const dsel = $('vacation-days');
+    if (!yb || !currentPerson || !appData) return;
+    const check = (appData.vacationChecks || {})[currentPerson];
+    if (check && check.updatedWeek === getCurrentWeek()) {
+      yb.classList.toggle('active', check.wasOut === true);
+      nb.classList.toggle('active-no', check.wasOut === false);
+      dbox.classList.toggle('visible', check.wasOut === true);
+      if (dsel && check.days) dsel.value = String(check.days);
+    } else {
+      yb.classList.remove('active');
+      nb.classList.remove('active-no');
+      dbox.classList.remove('visible');
+      if (dsel) dsel.value = '1';
+    }
+  }
+
   // Wire up button clicks and comment input
   (function() {
     const yb = $('capacity-yes-btn');
@@ -3599,12 +3669,24 @@
     if (yb) yb.addEventListener('click', () => setCapacity(true));
     if (nb) nb.addEventListener('click', () => setCapacity(false));
     if (cc) cc.addEventListener('input', saveCapacityDebounced);
+    const vyb = $('vacation-yes-btn');
+    const vnb = $('vacation-no-btn');
+    const vds = $('vacation-days');
+    if (vyb) vyb.addEventListener('click', () => setVacation(true));
+    if (vnb) vnb.addEventListener('click', () => setVacation(false));
+    if (vds) vds.addEventListener('change', () => {
+      if (appData && currentPerson && appData.vacationChecks && appData.vacationChecks[currentPerson]) {
+        appData.vacationChecks[currentPerson].days = parseInt(vds.value) || 1;
+        saveCapacityDebounced();
+      }
+    });
   })();
 
   function renderCapacityResponses(containerId) {
     const container = $(containerId);
     if (!container || !appData) return;
     const checks = appData.capacityChecks || {};
+    const vacChecks = appData.vacationChecks || {};
     const people = appData.people || [];
     const cw = getCurrentWeek();
     const pw = getPrevWeek(cw);
@@ -3612,13 +3694,17 @@
     let html = '<div class="capacity-responses">';
     people.forEach(person => {
       const check = checks[person];
+      const vac = vacChecks[person];
       const isRecent = check && (check.updatedWeek === cw || check.updatedWeek === pw);
+      const vacRecent = vac && (vac.updatedWeek === cw || vac.updatedWeek === pw);
+      let vacTag = '';
+      if (vacRecent && vac.wasOut) vacTag = '<div class="capacity-response-comment" style="color:#d97706;font-style:normal">Out ' + vac.days + ' day' + (vac.days > 1 ? 's' : '') + ' this week</div>';
       if (!check || !isRecent) {
-        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No response</div></div></div>';
+        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No response</div>' + vacTag + '</div></div>';
       } else if (check.hasCapacity) {
-        html += '<div class="capacity-response-row has-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">Yes \u2014 has capacity</div>' + (check.comment ? '<div class="capacity-response-comment">\u201C' + check.comment + '\u201D</div>' : '') + '</div></div>';
+        html += '<div class="capacity-response-row has-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">Yes \u2014 has capacity</div>' + (check.comment ? '<div class="capacity-response-comment">\u201C' + check.comment + '\u201D</div>' : '') + vacTag + '</div></div>';
       } else {
-        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No \u2014 fully allocated</div></div></div>';
+        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No \u2014 fully allocated</div>' + vacTag + '</div></div>';
       }
     });
     html += '</div>';
@@ -3810,14 +3896,20 @@
   async function performSave() {
     // Check capacity question is answered
     const capChecks = (appData.capacityChecks || {})[currentPerson];
-    if (!capChecks || capChecks.hasCapacity === undefined || capChecks.hasCapacity === null) {
+    const vacChecks = (appData.vacationChecks || {})[currentPerson];
+    const capMissing = !capChecks || capChecks.hasCapacity === undefined || capChecks.hasCapacity === null;
+    const vacMissing = !vacChecks || vacChecks.wasOut === undefined || vacChecks.wasOut === null || vacChecks.updatedWeek !== getCurrentWeek();
+    if (capMissing || vacMissing) {
       const card = $('capacity-check-card');
       if (card) {
         card.style.border = '2px solid #ef4444';
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(() => { card.style.border = ''; }, 3000);
       }
-      showToast('Please answer the capacity question before saving');
+      const msg = capMissing && vacMissing ? 'Please answer the capacity and vacation questions before saving'
+        : capMissing ? 'Please answer the capacity question before saving'
+        : 'Please answer the vacation question before saving';
+      showToast(msg);
       return;
     }
     setSaveBtnsState('Saving...', null, true);
