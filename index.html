@@ -1137,6 +1137,16 @@
 
   @media (max-width: 700px) {
     .insights-list { grid-template-columns: 1fr; }
+    .capacity-check-card [style*="grid-template-columns"] {
+      grid-template-columns: 1fr !important;
+    }
+    .capacity-check-card [style*="border-left"] {
+      border-left: none !important;
+      padding-left: 0 !important;
+      border-top: 1px solid var(--color-border-light);
+      padding-top: 12px;
+      margin-top: 12px;
+    }
   }
 
   .capacity-list {
@@ -2165,31 +2175,35 @@
     </a>
   </div>
 
-  <div class="capacity-check-card" id="capacity-check-card">
-    <div class="capacity-check-title">Do you expect to have additional capacity in the next 2 weeks? <span style="font-size:10px;color:#ef4444;font-weight:400">Required</span></div>
-    <div class="capacity-check-toggle">
-      <button class="capacity-check-btn" id="capacity-yes-btn">Yes</button>
-      <button class="capacity-check-btn" id="capacity-no-btn">No</button>
-    </div>
-    <div class="capacity-comment-box" id="capacity-comment-box">
-      <textarea class="capacity-comment-input" id="capacity-comment" rows="2" placeholder="Any details? (e.g., wrapping up a project next week, ~20% available)"></textarea>
-    </div>
-    <div style="border-top:1px solid var(--color-border-light);margin-top:12px;padding-top:12px">
-      <div class="capacity-check-title">Were you on vacation/out this week? <span style="font-size:10px;color:#ef4444;font-weight:400">Required</span></div>
-      <div class="capacity-check-toggle">
-        <button class="capacity-check-btn" id="vacation-yes-btn">Yes</button>
-        <button class="capacity-check-btn" id="vacation-no-btn">No</button>
+  <div class="capacity-check-card" id="capacity-check-card" style="margin-top:12px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div class="capacity-check-title">Additional capacity in the next 2 weeks? <span style="font-size:10px;color:#ef4444;font-weight:400">Required</span></div>
+        <div class="capacity-check-toggle">
+          <button class="capacity-check-btn" id="capacity-yes-btn">Yes</button>
+          <button class="capacity-check-btn" id="capacity-no-btn">No</button>
+        </div>
+        <div class="capacity-comment-box" id="capacity-comment-box">
+          <textarea class="capacity-comment-input" id="capacity-comment" rows="2" placeholder="Details (e.g., wrapping up a project, ~20% available)"></textarea>
+        </div>
       </div>
-      <div class="capacity-comment-box" id="vacation-days-box">
-        <label style="font-size:12px;color:var(--color-text-secondary)">How many days?
-          <select id="vacation-days" style="margin-left:6px;padding:4px 8px;border:1px solid var(--color-border);border-radius:var(--radius-sm);font-size:12px">
-            <option value="1">1 day</option>
-            <option value="2">2 days</option>
-            <option value="3">3 days</option>
-            <option value="4">4 days</option>
-            <option value="5">5 days (full week)</option>
-          </select>
-        </label>
+      <div style="border-left:1px solid var(--color-border-light);padding-left:16px">
+        <div class="capacity-check-title">Were you on vacation/out this week? <span style="font-size:10px;color:#ef4444;font-weight:400">Required</span></div>
+        <div class="capacity-check-toggle">
+          <button class="capacity-check-btn" id="vacation-yes-btn">Yes</button>
+          <button class="capacity-check-btn" id="vacation-no-btn">No</button>
+        </div>
+        <div class="capacity-comment-box" id="vacation-days-box">
+          <label style="font-size:12px;color:var(--color-text-secondary)">How many days?
+            <select id="vacation-days" style="margin-left:6px;padding:4px 8px;border:1px solid var(--color-border);border-radius:var(--radius-sm);font-size:12px">
+              <option value="1">1 day</option>
+              <option value="2">2 days</option>
+              <option value="3">3 days</option>
+              <option value="4">4 days</option>
+              <option value="5">5 days (full week)</option>
+            </select>
+          </label>
+        </div>
       </div>
     </div>
   </div>
