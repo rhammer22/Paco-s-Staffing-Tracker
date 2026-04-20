@@ -2401,11 +2401,18 @@
         <div id="admin-notable-changes-content"></div>
       </div>
 
-      <!-- Team Capacity Check -->
-      <div class="insight-card" style="margin-top:16px" data-testid="admin-capacity-responses-card">
-        <div class="insight-card-title">Team Capacity Check</div>
-        <div class="insight-card-subtitle">Self-reported availability for additional work in the next 2 weeks</div>
-        <div id="admin-capacity-responses"></div>
+      <!-- Team Status -->
+      <div class="insights-grid" style="margin-top:16px">
+        <div class="insight-card" data-testid="admin-capacity-responses-card">
+          <div class="insight-card-title">Future Capacity</div>
+          <div class="insight-card-subtitle">Self-reported availability for the next 2 weeks</div>
+          <div id="admin-capacity-responses"></div>
+        </div>
+        <div class="insight-card" data-testid="admin-vacation-status-card">
+          <div class="insight-card-title">Vacation Status</div>
+          <div class="insight-card-subtitle">Who was out this week and for how long</div>
+          <div id="admin-vacation-responses"></div>
+        </div>
       </div>
 
       <!-- Person Breakdown + Project Share -->
@@ -3700,7 +3707,6 @@
     const container = $(containerId);
     if (!container || !appData) return;
     const checks = appData.capacityChecks || {};
-    const vacChecks = appData.vacationChecks || {};
     const people = appData.people || [];
     const cw = getCurrentWeek();
     const pw = getPrevWeek(cw);
@@ -3708,17 +3714,37 @@
     let html = '<div class="capacity-responses">';
     people.forEach(person => {
       const check = checks[person];
-      const vac = vacChecks[person];
       const isRecent = check && (check.updatedWeek === cw || check.updatedWeek === pw);
-      const vacRecent = vac && (vac.updatedWeek === cw || vac.updatedWeek === pw);
-      let vacTag = '';
-      if (vacRecent && vac.wasOut) vacTag = '<div class="capacity-response-comment" style="color:#d97706;font-style:normal">Out ' + vac.days + ' day' + (vac.days > 1 ? 's' : '') + ' this week</div>';
       if (!check || !isRecent) {
-        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No response</div>' + vacTag + '</div></div>';
+        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No response</div></div></div>';
       } else if (check.hasCapacity) {
-        html += '<div class="capacity-response-row has-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">Yes \u2014 has capacity</div>' + (check.comment ? '<div class="capacity-response-comment">\u201C' + check.comment + '\u201D</div>' : '') + vacTag + '</div></div>';
+        html += '<div class="capacity-response-row has-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">Yes \u2014 has capacity</div>' + (check.comment ? '<div class="capacity-response-comment">\u201C' + check.comment + '\u201D</div>' : '') + '</div></div>';
       } else {
-        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No \u2014 fully allocated</div>' + vacTag + '</div></div>';
+        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No \u2014 fully allocated</div></div></div>';
+      }
+    });
+    html += '</div>';
+    container.innerHTML = html;
+  }
+
+  function renderVacationResponses(containerId) {
+    const container = $(containerId);
+    if (!container || !appData) return;
+    const vacChecks = appData.vacationChecks || {};
+    const people = appData.people || [];
+    const cw = getCurrentWeek();
+    const pw = getPrevWeek(cw);
+    if (people.length === 0) { container.innerHTML = '<div class="insights-empty">No responses yet</div>'; return; }
+    let html = '<div class="capacity-responses">';
+    people.forEach(person => {
+      const vac = vacChecks[person];
+      const isRecent = vac && (vac.updatedWeek === cw || vac.updatedWeek === pw);
+      if (!isRecent || !vac) {
+        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No response</div></div></div>';
+      } else if (vac.wasOut) {
+        html += '<div class="capacity-response-row" style="background:#fffbeb;border-left-color:#d97706"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status" style="color:#d97706">Out ' + vac.days + ' day' + (vac.days > 1 ? 's' : '') + '</div></div></div>';
+      } else {
+        html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">In office all week</div></div></div>';
       }
     });
     html += '</div>';
@@ -5104,6 +5130,7 @@
     const adminInsights = generateInsights(selectedWeek, filteredPeople, filteredProjects, null);
     renderInsightsHTML('admin-notable-changes-content', adminInsights);
     renderCapacityResponses('admin-capacity-responses');
+    renderVacationResponses('admin-vacation-responses');
     renderAdminBreakdown(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminPieChart(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminProjectStaffing(selectedWeek, filteredPeople, filteredProjects, mode);
