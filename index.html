@@ -3805,8 +3805,10 @@
 
       // Side-by-side comparison
       if (compareRows.length > 0 && prevWeeks.length > 0) {
-        html += '<div class="person-month-section-title">This Month vs ' + getMonthName(prevMonth) + '</div>';
-        html += '<table class="person-month-compare-table"><thead><tr><th>Project</th><th class="num">This</th><th class="num">Prev</th><th class="num">\u0394</th></tr></thead><tbody>';
+        html += '<div class="person-month-section-title">' + getMonthName(monthKey) + ' vs ' + getMonthName(prevMonth) + '</div>';
+        const curMonthShort = new Date(parseInt(monthKey.split('-')[0]), parseInt(monthKey.split('-')[1]) - 1, 1).toLocaleString('en-US', { month: 'short', year: '2-digit' });
+        const prevMonthShort = new Date(parseInt(prevMonth.split('-')[0]), parseInt(prevMonth.split('-')[1]) - 1, 1).toLocaleString('en-US', { month: 'short', year: '2-digit' });
+        html += '<table class="person-month-compare-table"><thead><tr><th>Project</th><th class="num">' + curMonthShort + '</th><th class="num">' + prevMonthShort + '</th><th class="num">\u0394</th></tr></thead><tbody>';
         compareRows.forEach(r => {
           const d = r.cur - r.prev;
           let deltaCell;
