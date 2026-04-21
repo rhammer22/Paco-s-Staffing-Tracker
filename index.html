@@ -2320,6 +2320,7 @@
   <div class="admin-tabs" data-testid="admin-tabs">
     <button class="admin-tab-btn" data-tab="all-entries" data-testid="tab-all-entries">All Entries</button>
     <button class="admin-tab-btn active" data-tab="insights" data-testid="tab-insights">Insights</button>
+    <button class="admin-tab-btn" data-tab="monthly" data-testid="tab-monthly">Monthly</button>
     <button class="admin-tab-btn" data-tab="activity-log" data-testid="tab-activity-log">Activity Log</button>
     <button class="admin-tab-btn" data-tab="easter-eggs" data-testid="tab-easter-eggs">Easter Eggs</button>
     <button class="admin-tab-btn" data-tab="setup" data-testid="tab-setup">Setup</button>
@@ -2482,6 +2483,58 @@
         <div class="insight-card-title">Estimation Accuracy by Person</div>
         <div class="insight-card-subtitle">On target = within ±5% of actual</div>
         <div id="admin-accuracy-content"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Monthly -->
+    <div class="admin-tab-panel" id="panel-monthly" data-testid="panel-monthly">
+      <div class="insight-card" style="margin-bottom:16px">
+        <div class="insight-card-title">Monthly View</div>
+        <div class="insight-card-subtitle">Review a full month of staffing data with month-over-month comparisons</div>
+        <div class="insight-filters" style="margin-top:12px">
+          <div class="insight-filter-group">
+            <span class="insight-filter-label">Month</span>
+            <select class="insight-select" id="monthly-month-select" data-testid="monthly-month-select"></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Monthly Summary KPIs -->
+      <div class="insight-card" data-testid="monthly-summary-card">
+        <div class="insight-card-title" id="monthly-summary-title">Summary</div>
+        <div id="monthly-summary-content"></div>
+      </div>
+
+      <!-- Month-over-Month Comparison -->
+      <div class="insight-card" style="margin-top:16px" data-testid="monthly-mom-card">
+        <div class="insight-card-title">Month-over-Month Comparison</div>
+        <div class="insight-card-subtitle">How this month's allocation differs from the previous month</div>
+        <div id="monthly-mom-content"></div>
+      </div>
+
+      <!-- Monthly Person Breakdown -->
+      <div class="insight-card" style="margin-top:16px" data-testid="monthly-person-card">
+        <div class="insight-card-title">Person Breakdown (Monthly Avg)</div>
+        <div class="insight-card-subtitle">Average weekly allocation across the month, per person</div>
+        <div class="chart-container">
+          <canvas id="monthly-person-chart" data-testid="monthly-person-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Monthly Project Share -->
+      <div class="insight-card" style="margin-top:16px" data-testid="monthly-project-card">
+        <div class="insight-card-title">Project Share (Monthly)</div>
+        <div class="insight-card-subtitle">Each project's share of total team effort across the month</div>
+        <div class="chart-container">
+          <canvas id="monthly-project-chart" data-testid="monthly-project-chart"></canvas>
+        </div>
+      </div>
+
+      <!-- Monthly Insights -->
+      <div class="insight-card" style="margin-top:16px" data-testid="monthly-insights-card">
+        <div class="insight-card-title">Monthly Insights</div>
+        <div class="insight-card-subtitle">Notable shifts, ramp-ups, and wind-downs</div>
+        <div id="monthly-insights-content"></div>
       </div>
     </div>
 
@@ -3289,6 +3342,241 @@
     }
   }
 
+  // ─── Monthly View ───
+  function weekToMonthKey(weekStr) {
+    // Returns YYYY-MM for the Monday of that ISO week
+    const [yearStr, wStr] = weekStr.split('-W');
+    const year = parseInt(yearStr), week = parseInt(wStr);
+    const jan4 = new Date(Date.UTC(year, 0, 4));
+    const jan4Day = jan4.getUTCDay() || 7;
+    const monday = new Date(jan4);
+    monday.setUTCDate(jan4.getUTCDate() - (jan4Day - 1) + (week - 1) * 7);
+    return `${monday.getUTCFullYear()}-${String(monday.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+
+  function getMonthName(monthKey) {
+    const [y, m] = monthKey.split('-');
+    const d = new Date(parseInt(y), parseInt(m) - 1, 1);
+    return d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  }
+
+  function getPrevMonthKey(monthKey) {
+    const [y, m] = monthKey.split('-');
+    let year = parseInt(y), month = parseInt(m) - 1;
+    if (month < 1) { year--; month = 12; }
+    return `${year}-${String(month).padStart(2, '0')}`;
+  }
+
+  function getAllMonthsWithData() {
+    if (!appData) return [];
+    const months = new Set();
+    Object.keys(appData.entries || {}).forEach(k => {
+      const v = appData.entries[k];
+      if (v && v > 0) {
+        const week = k.split('|')[0];
+        months.add(weekToMonthKey(week));
+      }
+    });
+    return [...months].sort();
+  }
+
+  function getWeeksInMonth(monthKey) {
+    if (!appData) return [];
+    const weeks = new Set();
+    Object.keys(appData.entries || {}).forEach(k => {
+      const v = appData.entries[k];
+      if (v && v > 0) {
+        const week = k.split('|')[0];
+        if (weekToMonthKey(week) === monthKey) weeks.add(week);
+      }
+    });
+    return [...weeks].sort();
+  }
+
+  function renderMonthlyView() {
+    const sel = $('monthly-month-select');
+    if (!sel) return;
+    const months = getAllMonthsWithData();
+    if (months.length === 0) {
+      sel.innerHTML = '<option>No data yet</option>';
+      $('monthly-summary-content').innerHTML = '<div class="insights-empty">No monthly data available yet</div>';
+      $('monthly-mom-content').innerHTML = '';
+      $('monthly-insights-content').innerHTML = '';
+      destroyChart('monthly-person-chart');
+      destroyChart('monthly-project-chart');
+      return;
+    }
+    // Populate month dropdown (most recent first)
+    const currentVal = sel.value;
+    sel.innerHTML = '';
+    months.slice().reverse().forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = getMonthName(m);
+      sel.appendChild(opt);
+    });
+    if (currentVal && months.includes(currentVal)) sel.value = currentVal;
+    sel.onchange = () => renderMonthlyContent(sel.value);
+    renderMonthlyContent(sel.value);
+  }
+
+  function renderMonthlyContent(monthKey) {
+    if (!monthKey || !appData) return;
+    const people = appData.people || [];
+    const projects = appData.projects || [];
+    const weeks = getWeeksInMonth(monthKey);
+    const prevMonth = getPrevMonthKey(monthKey);
+    const prevWeeks = getWeeksInMonth(prevMonth);
+
+    $('monthly-summary-title').textContent = getMonthName(monthKey) + ' Summary';
+
+    // --- Summary KPIs ---
+    // Per person: avg weekly total across the month
+    const personAvgs = {};
+    people.forEach(p => {
+      let sum = 0, cnt = 0;
+      weeks.forEach(w => {
+        let t = 0; projects.forEach(pr => { t += (appData.entries[`${w}|${p}|${pr}`] || 0); });
+        if (t > 0) { sum += t; cnt++; }
+      });
+      personAvgs[p] = cnt > 0 ? Math.round(sum / cnt) : 0;
+    });
+
+    // Top projects across month (by total team effort)
+    const projectTotals = {};
+    projects.forEach(pr => {
+      let t = 0;
+      weeks.forEach(w => { people.forEach(p => { t += (appData.entries[`${w}|${p}|${pr}`] || 0); }); });
+      projectTotals[pr] = t;
+    });
+    const topProjects = Object.entries(projectTotals).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    let summaryHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
+    summaryHtml += '<div><div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Weeks Covered</div><div style="font-size:20px;font-weight:700">' + weeks.length + '</div></div>';
+    summaryHtml += '<div><div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Team Avg Utilization</div><div style="font-size:20px;font-weight:700">' + Math.round(Object.values(personAvgs).reduce((a, b) => a + b, 0) / Math.max(1, people.length)) + '%</div></div>';
+    summaryHtml += '</div>';
+    summaryHtml += '<div style="margin-top:14px"><div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Top Projects</div>';
+    topProjects.forEach(([pr, v]) => {
+      const totalPossible = weeks.length * people.length * 100;
+      const pct = totalPossible > 0 ? Math.round((v / totalPossible) * 100) : 0;
+      summaryHtml += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>' + pr + '</span><span style="color:var(--color-text-secondary)">' + pct + '% of total effort</span></div>';
+    });
+    summaryHtml += '</div>';
+    $('monthly-summary-content').innerHTML = summaryHtml;
+
+    // --- Month-over-Month Comparison ---
+    let momHtml = '';
+    if (prevWeeks.length === 0) {
+      momHtml = '<div class="insights-empty">No prior month data to compare</div>';
+    } else {
+      // Compare project totals
+      const prevProjectTotals = {};
+      projects.forEach(pr => {
+        let t = 0;
+        prevWeeks.forEach(w => { people.forEach(p => { t += (appData.entries[`${w}|${p}|${pr}`] || 0); }); });
+        prevProjectTotals[pr] = t;
+      });
+      // Normalize to per-week-per-person to compare fairly
+      const changes = [];
+      projects.forEach(pr => {
+        const curAvg = weeks.length > 0 ? (projectTotals[pr] / (weeks.length * people.length)) : 0;
+        const prevAvg = prevWeeks.length > 0 ? (prevProjectTotals[pr] / (prevWeeks.length * people.length)) : 0;
+        const diff = curAvg - prevAvg;
+        if (Math.abs(diff) >= 2 && (curAvg > 0 || prevAvg > 0)) {
+          changes.push({ project: pr, cur: Math.round(curAvg), prev: Math.round(prevAvg), diff: Math.round(diff) });
+        }
+      });
+      changes.sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+      if (changes.length === 0) {
+        momHtml = '<div class="insights-empty">No major project shifts vs ' + getMonthName(prevMonth) + '</div>';
+      } else {
+        momHtml = '<div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:10px">Comparing to ' + getMonthName(prevMonth) + '</div>';
+        momHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+        changes.slice(0, 10).forEach(c => {
+          const arrow = c.diff > 0 ? '\u2191' : '\u2193';
+          const color = c.diff > 0 ? '#059669' : '#dc2626';
+          momHtml += '<div style="padding:8px 12px;background:var(--color-bg);border-radius:var(--radius-sm);font-size:13px"><div style="font-weight:600">' + c.project + '</div><div style="font-size:12px;color:var(--color-text-secondary)">' + c.prev + '% \u2192 ' + c.cur + '% <span style="color:' + color + ';font-weight:600">' + arrow + ' ' + Math.abs(c.diff) + 'pp</span></div></div>';
+        });
+        momHtml += '</div>';
+      }
+    }
+    $('monthly-mom-content').innerHTML = momHtml;
+
+    // --- Person Breakdown chart ---
+    const personLabels = people.slice();
+    const personData = people.map(p => personAvgs[p]);
+    createChart('monthly-person-chart', {
+      type: 'bar',
+      data: { labels: personLabels, datasets: [{ label: 'Avg Utilization', data: personData, backgroundColor: CHART_COLORS[0], borderRadius: 4 }] },
+      options: {
+        responsive: true, maintainAspectRatio: true, aspectRatio: 2,
+        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.raw + '% avg' } } }
+      }
+    });
+
+    // --- Project Share chart (doughnut) ---
+    const visibleProjects = topProjects.length > 0 ? topProjects : Object.entries(projectTotals).filter(([, v]) => v > 0).slice(0, 10);
+    if (visibleProjects.length > 0) {
+      createChart('monthly-project-chart', {
+        type: 'doughnut',
+        data: {
+          labels: visibleProjects.map(([p]) => p),
+          datasets: [{ data: visibleProjects.map(([, v]) => v), backgroundColor: visibleProjects.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]) }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: true, aspectRatio: 2,
+          plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } }
+        }
+      });
+    } else {
+      destroyChart('monthly-project-chart');
+    }
+
+    // --- Monthly Insights ---
+    const insights = [];
+    // Person who had biggest shift in util
+    if (prevWeeks.length > 0) {
+      const prevPersonAvgs = {};
+      people.forEach(p => {
+        let sum = 0, cnt = 0;
+        prevWeeks.forEach(w => {
+          let t = 0; projects.forEach(pr => { t += (appData.entries[`${w}|${p}|${pr}`] || 0); });
+          if (t > 0) { sum += t; cnt++; }
+        });
+        prevPersonAvgs[p] = cnt > 0 ? Math.round(sum / cnt) : 0;
+      });
+      const personShifts = people.map(p => ({ person: p, cur: personAvgs[p], prev: prevPersonAvgs[p] || 0, diff: personAvgs[p] - (prevPersonAvgs[p] || 0) }))
+        .filter(x => Math.abs(x.diff) >= 5).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+      personShifts.slice(0, 3).forEach(s => {
+        const dir = s.diff > 0 ? 'up' : 'down';
+        insights.push(`<div style="padding:10px 14px;border-left:3px solid ${s.diff > 0 ? '#059669' : '#dc2626'};background:var(--color-bg);border-radius:var(--radius-sm);margin-bottom:6px"><strong>${s.person}</strong> utilization ${dir} ${Math.abs(s.diff)}pp (${s.prev}% \u2192 ${s.cur}%)</div>`);
+      });
+    }
+    // Projects that ramped up or wound down
+    if (prevWeeks.length > 0) {
+      const prevProjectTotals = {};
+      projects.forEach(pr => {
+        let t = 0;
+        prevWeeks.forEach(w => { people.forEach(p => { t += (appData.entries[`${w}|${p}|${pr}`] || 0); }); });
+        prevProjectTotals[pr] = t;
+      });
+      projects.forEach(pr => {
+        const curAvg = weeks.length > 0 ? (projectTotals[pr] / (weeks.length * people.length)) : 0;
+        const prevAvg = prevWeeks.length > 0 ? (prevProjectTotals[pr] / (prevWeeks.length * people.length)) : 0;
+        if (prevAvg === 0 && curAvg >= 5) {
+          insights.push(`<div style="padding:10px 14px;border-left:3px solid #059669;background:var(--color-bg);border-radius:var(--radius-sm);margin-bottom:6px"><strong>${pr}</strong> ramped up this month (${Math.round(curAvg)}% avg, was 0% last month)</div>`);
+        } else if (curAvg === 0 && prevAvg >= 5) {
+          insights.push(`<div style="padding:10px 14px;border-left:3px solid #dc2626;background:var(--color-bg);border-radius:var(--radius-sm);margin-bottom:6px"><strong>${pr}</strong> wound down this month (was ${Math.round(prevAvg)}% avg last month)</div>`);
+        }
+      });
+    }
+    if (insights.length === 0) {
+      insights.push('<div class="insights-empty">No notable shifts for this month</div>');
+    }
+    $('monthly-insights-content').innerHTML = insights.join('');
+  }
+
   function renderActivityLog() {
     const list = $('activity-log-list');
     const empty = $('activity-log-empty');
@@ -3380,6 +3668,41 @@
   };
   Chart.register(endLabelPlugin);
 
+  // Plugin: draw vertical dashed line at current week on line charts
+  const currentWeekLinePlugin = {
+    id: 'currentWeekLine',
+    beforeDatasetsDraw(chart) {
+      if (!chart.config._config?.options?.plugins?.currentWeekLine?.enabled) return;
+      if (chart.config.type !== 'line') return;
+      const cw = getCurrentWeek();
+      const labels = chart.data.labels || [];
+      const idx = labels.indexOf(cw);
+      if (idx < 0) return;
+      const xScale = chart.scales.x;
+      const yScale = chart.scales.y;
+      if (!xScale || !yScale) return;
+      const xPos = xScale.getPixelForValue(idx);
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.strokeStyle = '#94a3b8';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(xPos, yScale.top);
+      ctx.lineTo(xPos, yScale.bottom);
+      ctx.stroke();
+      // Label "This Week" at the top
+      ctx.setLineDash([]);
+      ctx.font = '9px Inter, sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('This Week', xPos, yScale.top - 2);
+      ctx.restore();
+    }
+  };
+  Chart.register(currentWeekLinePlugin);
+
   function createChart(canvasId, config) {
     destroyChart(canvasId);
     const canvas = $(canvasId);
@@ -3388,6 +3711,17 @@
     // Ensure crisp rendering on retina displays
     config.options = config.options || {};
     config.options.devicePixelRatio = window.devicePixelRatio || 2;
+    // Auto-enable current week vertical line on all line charts
+    if (config.type === 'line') {
+      config.options.plugins = config.options.plugins || {};
+      if (config.options.plugins.currentWeekLine === undefined) {
+        config.options.plugins.currentWeekLine = { enabled: true };
+      }
+      // Add top padding if not set, so "This Week" label doesn't clip
+      config.options.layout = config.options.layout || {};
+      config.options.layout.padding = config.options.layout.padding || {};
+      if (!config.options.layout.padding.top) config.options.layout.padding.top = 18;
+    }
     chartInstances[canvasId] = new Chart(ctx, config);
     return chartInstances[canvasId];
   }
@@ -4525,6 +4859,8 @@
 
       if (tabId === 'insights') {
         renderAdminInsights();
+      } else if (tabId === 'monthly') {
+        renderMonthlyView();
       } else if (tabId === 'activity-log') {
         renderActivityLog();
       }
