@@ -1441,6 +1441,72 @@
     margin-right: auto;
   }
 
+  /* Per-Person Monthly Breakdown */
+  .person-month-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 800px) {
+    .person-month-grid { grid-template-columns: 1fr; }
+  }
+  .person-month-card {
+    padding: 14px;
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface);
+  }
+  .person-month-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .person-month-name {
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .person-month-util {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .person-month-util-sub {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  .person-month-delta-up { color: #059669; }
+  .person-month-delta-down { color: #dc2626; }
+  .person-month-delta-flat { color: var(--color-text-muted); }
+  .person-month-projects {
+    margin-top: 6px;
+  }
+  .person-month-project-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    padding: 3px 0;
+    border-bottom: 1px dashed var(--color-border-light);
+  }
+  .person-month-project-row:last-child { border-bottom: none; }
+  .person-month-project-name { color: var(--color-text); }
+  .person-month-project-val { font-weight: 600; }
+  .person-month-project-change {
+    font-size: 11px;
+    margin-left: 6px;
+  }
+  .person-month-insights {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-border-light);
+  }
+  .person-month-insight-item {
+    font-size: 11px;
+    padding: 2px 0;
+    color: var(--color-text-secondary);
+  }
+
   /* ─── Insights Disclaimer ─── */
   .insights-disclaimer {
     margin: 0 16px 12px;
@@ -2536,6 +2602,13 @@
         <div class="insight-card-subtitle">Notable shifts, ramp-ups, and wind-downs</div>
         <div id="monthly-insights-content"></div>
       </div>
+
+      <!-- Per-Person Monthly Breakdowns -->
+      <div class="insight-card" style="margin-top:16px" data-testid="monthly-per-person-card">
+        <div class="insight-card-title">Per-Person Breakdown</div>
+        <div class="insight-card-subtitle">Each team member's projects, trends, and key shifts for the month</div>
+        <div id="monthly-per-person-content"></div>
+      </div>
     </div>
 
     <!-- Tab 3: Activity Log -->
@@ -3575,6 +3648,111 @@
       insights.push('<div class="insights-empty">No notable shifts for this month</div>');
     }
     $('monthly-insights-content').innerHTML = insights.join('');
+
+    // --- Per-Person Monthly Breakdowns ---
+    const perPersonContainer = $('monthly-per-person-content');
+    if (!perPersonContainer) return;
+
+    // Build prior-month data for comparison
+    const prevPersonAvgs = {};
+    people.forEach(p => {
+      let sum = 0, cnt = 0;
+      prevWeeks.forEach(w => {
+        let t = 0; projects.forEach(pr => { t += (appData.entries[`${w}|${p}|${pr}`] || 0); });
+        if (t > 0) { sum += t; cnt++; }
+      });
+      prevPersonAvgs[p] = cnt > 0 ? Math.round(sum / cnt) : 0;
+    });
+
+    let personHtml = '<div class="person-month-grid">';
+    people.forEach(person => {
+      // Current month: average % per project across weeks they worked
+      const projAvgs = {};
+      projects.forEach(pr => {
+        let sum = 0, cnt = 0;
+        weeks.forEach(w => {
+          const v = appData.entries[`${w}|${person}|${pr}`] || 0;
+          if (v > 0) { sum += v; cnt++; }
+        });
+        if (cnt > 0) projAvgs[pr] = { val: Math.round(sum / cnt), weeks: cnt };
+      });
+      const sortedProjects = Object.entries(projAvgs).sort((a, b) => b[1].val - a[1].val);
+
+      // Prior month project averages
+      const prevProjAvgs = {};
+      projects.forEach(pr => {
+        let sum = 0, cnt = 0;
+        prevWeeks.forEach(w => {
+          const v = appData.entries[`${w}|${person}|${pr}`] || 0;
+          if (v > 0) { sum += v; cnt++; }
+        });
+        if (cnt > 0) prevProjAvgs[pr] = Math.round(sum / cnt);
+      });
+
+      const curUtil = personAvgs[person];
+      const prevUtil = prevPersonAvgs[person] || 0;
+      const utilDiff = curUtil - prevUtil;
+      const deltaClass = Math.abs(utilDiff) < 3 ? 'person-month-delta-flat' : (utilDiff > 0 ? 'person-month-delta-up' : 'person-month-delta-down');
+      const deltaSymbol = Math.abs(utilDiff) < 3 ? '~' : (utilDiff > 0 ? '\u2191' : '\u2193');
+      const deltaText = Math.abs(utilDiff) < 3 ? 'flat vs prior' : deltaSymbol + ' ' + Math.abs(utilDiff) + 'pp vs ' + prevUtil + '% last month';
+
+      personHtml += '<div class="person-month-card">';
+      personHtml += '<div class="person-month-header"><div class="person-month-name">' + person + '</div>';
+      personHtml += '<div class="person-month-util">' + curUtil + '% <span class="person-month-util-sub ' + deltaClass + '">' + deltaText + '</span></div></div>';
+
+      // Projects list
+      if (sortedProjects.length === 0) {
+        personHtml += '<div style="font-size:12px;color:var(--color-text-muted);padding:8px 0">No entries this month</div>';
+      } else {
+        personHtml += '<div class="person-month-projects">';
+        sortedProjects.forEach(([pr, info]) => {
+          const prevVal = prevProjAvgs[pr];
+          let changeHtml = '';
+          if (prevVal !== undefined) {
+            const d = info.val - prevVal;
+            if (Math.abs(d) >= 3) {
+              const cls = d > 0 ? 'person-month-delta-up' : 'person-month-delta-down';
+              const arr = d > 0 ? '\u2191' : '\u2193';
+              changeHtml = '<span class="person-month-project-change ' + cls + '">' + arr + Math.abs(d) + 'pp</span>';
+            }
+          } else if (info.val >= 5) {
+            changeHtml = '<span class="person-month-project-change person-month-delta-up">NEW</span>';
+          }
+          personHtml += '<div class="person-month-project-row"><span class="person-month-project-name">' + pr + '</span><span><span class="person-month-project-val">' + info.val + '%</span>' + changeHtml + '</span></div>';
+        });
+        personHtml += '</div>';
+      }
+
+      // Personal insights
+      const pInsights = [];
+      // Projects that disappeared vs last month
+      Object.keys(prevProjAvgs).forEach(pr => {
+        if (!(pr in projAvgs) && prevProjAvgs[pr] >= 10) {
+          pInsights.push('\u2022 Dropped off <strong>' + pr + '</strong> (was ' + prevProjAvgs[pr] + '% last month)');
+        }
+      });
+      // Biggest new focus
+      const newProjects = sortedProjects.filter(([pr]) => !(pr in prevProjAvgs) && projAvgs[pr].val >= 10);
+      if (newProjects.length > 0) {
+        pInsights.push('\u2022 Started on <strong>' + newProjects.map(([pr, i]) => pr + ' (' + i.val + '%)').join(', ') + '</strong>');
+      }
+      // Weeks out (vacation)
+      const vac = (appData.vacationChecks || {})[person];
+      if (vac && vac.wasOut && vac.days) {
+        const vacWeek = vac.updatedWeek;
+        if (weeks.includes(vacWeek)) {
+          pInsights.push('\u2022 Out <strong>' + vac.days + ' day' + (vac.days > 1 ? 's' : '') + '</strong> during ' + vacWeek);
+        }
+      }
+
+      if (pInsights.length > 0) {
+        personHtml += '<div class="person-month-insights">' + pInsights.map(i => '<div class="person-month-insight-item">' + i + '</div>').join('') + '</div>';
+      }
+
+      personHtml += '</div>';
+    });
+    personHtml += '</div>';
+    perPersonContainer.innerHTML = personHtml;
   }
 
   function renderActivityLog() {
