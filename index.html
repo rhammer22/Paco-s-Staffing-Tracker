@@ -1497,15 +1497,62 @@
     margin-left: 6px;
   }
   .person-month-insights {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--color-border-light);
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: var(--color-bg);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--color-primary, #6366f1);
+  }
+  .person-month-insights-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 6px;
   }
   .person-month-insight-item {
-    font-size: 11px;
-    padding: 2px 0;
+    font-size: 12px;
+    padding: 3px 0;
     color: var(--color-text-secondary);
+    line-height: 1.4;
   }
+  .person-month-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin: 14px 0 6px;
+  }
+  .person-month-chart-wrap {
+    height: 140px;
+    position: relative;
+  }
+  .person-month-compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .person-month-compare-table th {
+    text-align: left;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    font-weight: 600;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--color-border-light);
+  }
+  .person-month-compare-table td {
+    padding: 4px 6px;
+    border-bottom: 1px dashed var(--color-border-light);
+  }
+  .person-month-compare-table td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .person-month-compare-table tr:last-child td { border-bottom: none; }
 
   /* ─── Insights Disclaimer ─── */
   .insights-disclaimer {
@@ -2578,15 +2625,6 @@
         <div id="monthly-mom-content"></div>
       </div>
 
-      <!-- Monthly Person Breakdown -->
-      <div class="insight-card" style="margin-top:16px" data-testid="monthly-person-card">
-        <div class="insight-card-title">Person Breakdown (Monthly Avg)</div>
-        <div class="insight-card-subtitle">Average weekly allocation across the month, per person</div>
-        <div class="chart-container">
-          <canvas id="monthly-person-chart" data-testid="monthly-person-chart"></canvas>
-        </div>
-      </div>
-
       <!-- Monthly Project Share -->
       <div class="insight-card" style="margin-top:16px" data-testid="monthly-project-card">
         <div class="insight-card-title">Project Share (Monthly)</div>
@@ -2604,11 +2642,7 @@
       </div>
 
       <!-- Per-Person Monthly Breakdowns -->
-      <div class="insight-card" style="margin-top:16px" data-testid="monthly-per-person-card">
-        <div class="insight-card-title">Per-Person Breakdown</div>
-        <div class="insight-card-subtitle">Each team member's projects, trends, and key shifts for the month</div>
-        <div id="monthly-per-person-content"></div>
-      </div>
+      <div id="monthly-per-person-container" style="margin-top:16px"></div>
     </div>
 
     <!-- Tab 3: Activity Log -->
@@ -3475,8 +3509,9 @@
       $('monthly-summary-content').innerHTML = '<div class="insights-empty">No monthly data available yet</div>';
       $('monthly-mom-content').innerHTML = '';
       $('monthly-insights-content').innerHTML = '';
-      destroyChart('monthly-person-chart');
       destroyChart('monthly-project-chart');
+      const ppc = $('monthly-per-person-container');
+      if (ppc) ppc.innerHTML = '';
       return;
     }
     // Populate month dropdown (most recent first)
@@ -3575,19 +3610,6 @@
     }
     $('monthly-mom-content').innerHTML = momHtml;
 
-    // --- Person Breakdown chart ---
-    const personLabels = people.slice();
-    const personData = people.map(p => personAvgs[p]);
-    createChart('monthly-person-chart', {
-      type: 'bar',
-      data: { labels: personLabels, datasets: [{ label: 'Avg Utilization', data: personData, backgroundColor: CHART_COLORS[0], borderRadius: 4 }] },
-      options: {
-        responsive: true, maintainAspectRatio: true, aspectRatio: 2,
-        scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => c.raw + '% avg' } } }
-      }
-    });
-
     // --- Project Share chart (doughnut) ---
     const visibleProjects = topProjects.length > 0 ? topProjects : Object.entries(projectTotals).filter(([, v]) => v > 0).slice(0, 10);
     if (visibleProjects.length > 0) {
@@ -3650,7 +3672,7 @@
     $('monthly-insights-content').innerHTML = insights.join('');
 
     // --- Per-Person Monthly Breakdowns ---
-    const perPersonContainer = $('monthly-per-person-content');
+    const perPersonContainer = $('monthly-per-person-container');
     if (!perPersonContainer) return;
 
     // Build prior-month data for comparison
@@ -3664,7 +3686,16 @@
       prevPersonAvgs[p] = cnt > 0 ? Math.round(sum / cnt) : 0;
     });
 
-    let personHtml = '<div class="person-month-grid">';
+    // Destroy any old per-person charts from a previous render
+    people.forEach(p => {
+      const safeId = 'monthly-person-chart-' + p.replace(/[^a-zA-Z0-9]/g, '_');
+      destroyChart(safeId);
+    });
+
+    // Build HTML first
+    const personCards = [];
+    const chartsToRender = [];
+
     people.forEach(person => {
       // Current month: average % per project across weeks they worked
       const projAvgs = {};
@@ -3674,9 +3705,8 @@
           const v = appData.entries[`${w}|${person}|${pr}`] || 0;
           if (v > 0) { sum += v; cnt++; }
         });
-        if (cnt > 0) projAvgs[pr] = { val: Math.round(sum / cnt), weeks: cnt };
+        if (cnt > 0) projAvgs[pr] = Math.round(sum / cnt);
       });
-      const sortedProjects = Object.entries(projAvgs).sort((a, b) => b[1].val - a[1].val);
 
       // Prior month project averages
       const prevProjAvgs = {};
@@ -3689,70 +3719,148 @@
         if (cnt > 0) prevProjAvgs[pr] = Math.round(sum / cnt);
       });
 
+      const sortedProjects = Object.entries(projAvgs).sort((a, b) => b[1] - a[1]);
+      const safeId = 'monthly-person-chart-' + person.replace(/[^a-zA-Z0-9]/g, '_');
+
       const curUtil = personAvgs[person];
       const prevUtil = prevPersonAvgs[person] || 0;
       const utilDiff = curUtil - prevUtil;
       const deltaClass = Math.abs(utilDiff) < 3 ? 'person-month-delta-flat' : (utilDiff > 0 ? 'person-month-delta-up' : 'person-month-delta-down');
       const deltaSymbol = Math.abs(utilDiff) < 3 ? '~' : (utilDiff > 0 ? '\u2191' : '\u2193');
-      const deltaText = Math.abs(utilDiff) < 3 ? 'flat vs prior' : deltaSymbol + ' ' + Math.abs(utilDiff) + 'pp vs ' + prevUtil + '% last month';
+      const deltaText = prevWeeks.length === 0
+        ? 'no prior month data'
+        : (Math.abs(utilDiff) < 3 ? 'flat vs prior' : deltaSymbol + ' ' + Math.abs(utilDiff) + 'pp vs ' + prevUtil + '% last month');
 
-      personHtml += '<div class="person-month-card">';
-      personHtml += '<div class="person-month-header"><div class="person-month-name">' + person + '</div>';
-      personHtml += '<div class="person-month-util">' + curUtil + '% <span class="person-month-util-sub ' + deltaClass + '">' + deltaText + '</span></div></div>';
-
-      // Projects list
-      if (sortedProjects.length === 0) {
-        personHtml += '<div style="font-size:12px;color:var(--color-text-muted);padding:8px 0">No entries this month</div>';
-      } else {
-        personHtml += '<div class="person-month-projects">';
-        sortedProjects.forEach(([pr, info]) => {
-          const prevVal = prevProjAvgs[pr];
-          let changeHtml = '';
-          if (prevVal !== undefined) {
-            const d = info.val - prevVal;
-            if (Math.abs(d) >= 3) {
-              const cls = d > 0 ? 'person-month-delta-up' : 'person-month-delta-down';
-              const arr = d > 0 ? '\u2191' : '\u2193';
-              changeHtml = '<span class="person-month-project-change ' + cls + '">' + arr + Math.abs(d) + 'pp</span>';
-            }
-          } else if (info.val >= 5) {
-            changeHtml = '<span class="person-month-project-change person-month-delta-up">NEW</span>';
-          }
-          personHtml += '<div class="person-month-project-row"><span class="person-month-project-name">' + pr + '</span><span><span class="person-month-project-val">' + info.val + '%</span>' + changeHtml + '</span></div>';
-        });
-        personHtml += '</div>';
-      }
-
-      // Personal insights
+      // Build 3 key insights
       const pInsights = [];
-      // Projects that disappeared vs last month
+      // 1. Drop-offs (projects worked on last month, not this month)
       Object.keys(prevProjAvgs).forEach(pr => {
         if (!(pr in projAvgs) && prevProjAvgs[pr] >= 10) {
-          pInsights.push('\u2022 Dropped off <strong>' + pr + '</strong> (was ' + prevProjAvgs[pr] + '% last month)');
+          pInsights.push('Dropped off <strong>' + pr + '</strong> (was ' + prevProjAvgs[pr] + '% last month)');
         }
       });
-      // Biggest new focus
-      const newProjects = sortedProjects.filter(([pr]) => !(pr in prevProjAvgs) && projAvgs[pr].val >= 10);
-      if (newProjects.length > 0) {
-        pInsights.push('\u2022 Started on <strong>' + newProjects.map(([pr, i]) => pr + ' (' + i.val + '%)').join(', ') + '</strong>');
-      }
-      // Weeks out (vacation)
+      // 2. New projects
+      sortedProjects.forEach(([pr, val]) => {
+        if (!(pr in prevProjAvgs) && val >= 10) {
+          pInsights.push('Started on <strong>' + pr + '</strong> (' + val + '% of time)');
+        }
+      });
+      // 3. Biggest shift on a continuing project
+      const shifts = [];
+      sortedProjects.forEach(([pr, val]) => {
+        if (pr in prevProjAvgs) {
+          const d = val - prevProjAvgs[pr];
+          if (Math.abs(d) >= 10) shifts.push({ pr, d, cur: val, prev: prevProjAvgs[pr] });
+        }
+      });
+      shifts.sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+      shifts.slice(0, 2).forEach(s => {
+        const dir = s.d > 0 ? 'Increased' : 'Decreased';
+        pInsights.push(dir + ' <strong>' + s.pr + '</strong> by ' + Math.abs(s.d) + 'pp (' + s.prev + '% \u2192 ' + s.cur + '%)');
+      });
+      // 4. Vacation
       const vac = (appData.vacationChecks || {})[person];
       if (vac && vac.wasOut && vac.days) {
         const vacWeek = vac.updatedWeek;
         if (weeks.includes(vacWeek)) {
-          pInsights.push('\u2022 Out <strong>' + vac.days + ' day' + (vac.days > 1 ? 's' : '') + '</strong> during ' + vacWeek);
+          pInsights.push('Out <strong>' + vac.days + ' day' + (vac.days > 1 ? 's' : '') + '</strong> during ' + vacWeek);
         }
       }
-
-      if (pInsights.length > 0) {
-        personHtml += '<div class="person-month-insights">' + pInsights.map(i => '<div class="person-month-insight-item">' + i + '</div>').join('') + '</div>';
+      // 5. Utilization shift (fallback)
+      if (Math.abs(utilDiff) >= 5 && prevWeeks.length > 0) {
+        const dir = utilDiff > 0 ? 'up' : 'down';
+        pInsights.push('Overall utilization ' + dir + ' <strong>' + Math.abs(utilDiff) + 'pp</strong> (' + prevUtil + '% \u2192 ' + curUtil + '%)');
+      }
+      // Trim to 3
+      const topInsights = pInsights.slice(0, 3);
+      if (topInsights.length === 0) {
+        topInsights.push(sortedProjects.length === 0 ? 'No entries this month' : 'Steady month \u2014 no major shifts vs last month');
       }
 
-      personHtml += '</div>';
+      // Build side-by-side comparison table
+      const allProjectsUnion = new Set([...Object.keys(projAvgs), ...Object.keys(prevProjAvgs)]);
+      const compareRows = [...allProjectsUnion].map(pr => ({
+        pr,
+        cur: projAvgs[pr] || 0,
+        prev: prevProjAvgs[pr] || 0
+      })).sort((a, b) => Math.max(b.cur, b.prev) - Math.max(a.cur, a.prev));
+
+      // Render card
+      let html = '<div class="person-month-card">';
+      html += '<div class="person-month-header"><div class="person-month-name">' + person + '</div>';
+      html += '<div class="person-month-util">' + curUtil + '% <span class="person-month-util-sub ' + deltaClass + '">' + deltaText + '</span></div></div>';
+
+      // Insights block
+      html += '<div class="person-month-insights">';
+      html += '<div class="person-month-insights-title">Key Insights</div>';
+      html += topInsights.map(i => '<div class="person-month-insight-item">\u2022 ' + i + '</div>').join('');
+      html += '</div>';
+
+      // Project mix bar chart
+      if (sortedProjects.length > 0) {
+        html += '<div class="person-month-section-title">Project Mix \u2014 ' + getMonthName(monthKey) + '</div>';
+        html += '<div class="person-month-chart-wrap"><canvas id="' + safeId + '"></canvas></div>';
+        chartsToRender.push({ id: safeId, labels: sortedProjects.map(x => x[0]), values: sortedProjects.map(x => x[1]) });
+      }
+
+      // Side-by-side comparison
+      if (compareRows.length > 0 && prevWeeks.length > 0) {
+        html += '<div class="person-month-section-title">This Month vs ' + getMonthName(prevMonth) + '</div>';
+        html += '<table class="person-month-compare-table"><thead><tr><th>Project</th><th class="num">This</th><th class="num">Prev</th><th class="num">\u0394</th></tr></thead><tbody>';
+        compareRows.forEach(r => {
+          const d = r.cur - r.prev;
+          let deltaCell;
+          if (r.prev === 0 && r.cur > 0) {
+            deltaCell = '<span class="person-month-delta-up">NEW</span>';
+          } else if (r.cur === 0 && r.prev > 0) {
+            deltaCell = '<span class="person-month-delta-down">\u2014</span>';
+          } else if (Math.abs(d) < 3) {
+            deltaCell = '<span style="color:var(--color-text-muted)">~</span>';
+          } else {
+            const cls = d > 0 ? 'person-month-delta-up' : 'person-month-delta-down';
+            const arr = d > 0 ? '\u2191' : '\u2193';
+            deltaCell = '<span class="' + cls + '">' + arr + Math.abs(d) + '</span>';
+          }
+          html += '<tr><td>' + r.pr + '</td><td class="num">' + (r.cur > 0 ? r.cur + '%' : '\u2014') + '</td><td class="num">' + (r.prev > 0 ? r.prev + '%' : '\u2014') + '</td><td class="num">' + deltaCell + '</td></tr>';
+        });
+        html += '</tbody></table>';
+      }
+
+      html += '</div>';
+      personCards.push(html);
     });
-    personHtml += '</div>';
-    perPersonContainer.innerHTML = personHtml;
+
+    perPersonContainer.innerHTML = '<div class="insight-card" style="margin-top:0"><div class="insight-card-title">Per-Person Monthly Breakdowns</div><div class="insight-card-subtitle">Individual insights, project mix, and side-by-side month-over-month comparison</div><div class="person-month-grid" style="margin-top:12px">' + personCards.join('') + '</div></div>';
+
+    // Render per-person charts now that canvases exist in the DOM
+    chartsToRender.forEach(c => {
+      createChart(c.id, {
+        type: 'bar',
+        data: {
+          labels: c.labels,
+          datasets: [{
+            label: '% of time',
+            data: c.values,
+            backgroundColor: c.labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]),
+            borderRadius: 3,
+            borderWidth: 0
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%', font: { size: 10 } } },
+            y: { ticks: { font: { size: 11 } } }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: ctx => ctx.raw + '%' } }
+          }
+        }
+      });
+    });
   }
 
   function renderActivityLog() {
