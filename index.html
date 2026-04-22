@@ -1554,6 +1554,174 @@
   }
   .person-month-compare-table tr:last-child td { border-bottom: none; }
 
+  /* ─── Monthly Summary Hero ─── */
+  .monthly-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 4px;
+  }
+  @media (max-width: 900px) {
+    .monthly-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .monthly-kpi-tile {
+    position: relative;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid var(--color-border-light, #e5e7eb);
+    overflow: hidden;
+  }
+  .monthly-kpi-tile::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--kpi-accent, #6366f1);
+  }
+  .kpi-accent-blue  { --kpi-accent: #3b82f6; background: linear-gradient(135deg, #eff6ff 0%, #ffffff 70%); }
+  .kpi-accent-green { --kpi-accent: #059669; background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 70%); }
+  .kpi-accent-purple{ --kpi-accent: #8b5cf6; background: linear-gradient(135deg, #f5f3ff 0%, #ffffff 70%); }
+  .kpi-accent-orange{ --kpi-accent: #ea580c; background: linear-gradient(135deg, #fff7ed 0%, #ffffff 70%); }
+  .monthly-kpi-tile .kpi-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    margin-bottom: 8px;
+  }
+  .monthly-kpi-tile .kpi-value {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--color-text, #1f2937);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+  .monthly-kpi-tile .kpi-value-text {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .monthly-kpi-tile .kpi-sub {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+    margin-top: 6px;
+  }
+  .monthly-kpi-tile .kpi-delta {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 6px;
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+  .kpi-delta-up   { background: #ecfdf5; color: #059669; }
+  .kpi-delta-down { background: #fef2f2; color: #dc2626; }
+  .kpi-delta-flat { background: #f3f4f6; color: #6b7280; }
+
+  .monthly-stat-strip {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 10px 16px;
+    background: var(--color-bg, #f9fafb);
+    border: 1px solid var(--color-border-light, #e5e7eb);
+    border-radius: 10px;
+  }
+  .stat-strip-item { flex: 1; min-width: 0; }
+  .stat-strip-divider { width: 1px; align-self: stretch; background: var(--color-border-light, #e5e7eb); margin: 0 16px; }
+  .stat-strip-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+  }
+  .stat-strip-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text, #1f2937);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .stat-strip-num {
+    font-weight: 700;
+    color: var(--color-accent, #1e3a5f);
+    font-variant-numeric: tabular-nums;
+    margin-left: 4px;
+  }
+
+  .monthly-top-projects { margin-top: 16px; }
+  .monthly-top-projects-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 10px;
+  }
+  .top-proj-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+  }
+  .top-proj-rank {
+    flex: 0 0 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--color-bg, #f3f4f6);
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .top-proj-main { flex: 1; min-width: 0; }
+  .top-proj-labels {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .top-proj-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text, #1f2937);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .top-proj-pct {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .top-proj-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--color-border-light, #e5e7eb);
+    overflow: hidden;
+  }
+  .top-proj-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+  }
+
   /* ─── Insights Disclaimer ─── */
   .insights-disclaimer {
     margin: 0 16px 12px;
@@ -3559,17 +3727,96 @@
     });
     const topProjects = Object.entries(projectTotals).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-    let summaryHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">';
-    summaryHtml += '<div><div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Weeks Covered</div><div style="font-size:20px;font-weight:700">' + weeks.length + '</div></div>';
-    summaryHtml += '<div><div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Team Avg Utilization</div><div style="font-size:20px;font-weight:700">' + Math.round(Object.values(personAvgs).reduce((a, b) => a + b, 0) / Math.max(1, people.length)) + '%</div></div>';
+    // Extra stats for hero tiles
+    const teamAvgUtil = Math.round(Object.values(personAvgs).reduce((a, b) => a + b, 0) / Math.max(1, people.length));
+    const activeProjects = Object.values(projectTotals).filter(v => v > 0).length;
+    const topProj = topProjects[0] || null;
+    const topProjTotalPossible = weeks.length * people.length * 100;
+    const topProjPct = topProj && topProjTotalPossible > 0 ? Math.round((topProj[1] / topProjTotalPossible) * 100) : 0;
+
+    // Prior-month stats for deltas
+    let prevTeamAvgUtil = null, prevActiveProjects = null;
+    if (prevWeeks.length > 0) {
+      const prevPersonAvgsForKPI = {};
+      people.forEach(p => {
+        let sum = 0, cnt = 0;
+        prevWeeks.forEach(w => {
+          let t = 0; projects.forEach(pr => { t += (appData.entries[`${w}|${p}|${pr}`] || 0); });
+          if (t > 0) { sum += t; cnt++; }
+        });
+        prevPersonAvgsForKPI[p] = cnt > 0 ? Math.round(sum / cnt) : 0;
+      });
+      prevTeamAvgUtil = Math.round(Object.values(prevPersonAvgsForKPI).reduce((a, b) => a + b, 0) / Math.max(1, people.length));
+      const prevProjTotalsForKPI = {};
+      projects.forEach(pr => {
+        let t = 0; prevWeeks.forEach(w => { people.forEach(p => { t += (appData.entries[`${w}|${p}|${pr}`] || 0); }); });
+        prevProjTotalsForKPI[pr] = t;
+      });
+      prevActiveProjects = Object.values(prevProjTotalsForKPI).filter(v => v > 0).length;
+    }
+
+    // Busiest / lowest util person
+    const personEntries = Object.entries(personAvgs).filter(([, v]) => v > 0);
+    const busiestPerson = personEntries.length > 0 ? personEntries.slice().sort((a, b) => b[1] - a[1])[0] : null;
+    const lowestPerson = personEntries.length > 0 ? personEntries.slice().sort((a, b) => a[1] - b[1])[0] : null;
+
+    // People who logged at least one week this month
+    const peopleWhoLogged = people.filter(p => personAvgs[p] > 0).length;
+
+    // Delta pill helper
+    const deltaPill = (cur, prev, suffix, invert) => {
+      if (prev === null || prev === undefined) return '<span class="kpi-delta kpi-delta-flat">First month</span>';
+      const d = cur - prev;
+      if (Math.abs(d) < 1) return '<span class="kpi-delta kpi-delta-flat">\u2194 flat</span>';
+      const positive = invert ? d < 0 : d > 0;
+      const cls = positive ? 'kpi-delta-up' : 'kpi-delta-down';
+      const arr = d > 0 ? '\u2191' : '\u2193';
+      return '<span class="kpi-delta ' + cls + '">' + arr + ' ' + Math.abs(d) + (suffix || '') + ' vs ' + getMonthName(prevMonth).split(' ')[0] + '</span>';
+    };
+
+    let summaryHtml = '';
+
+    // Hero KPI tiles
+    summaryHtml += '<div class="monthly-kpi-grid">';
+    summaryHtml += '<div class="monthly-kpi-tile kpi-accent-blue"><div class="kpi-label">Weeks Covered</div><div class="kpi-value">' + weeks.length + '</div><div class="kpi-sub">' + peopleWhoLogged + ' of ' + people.length + ' team logged</div></div>';
+    summaryHtml += '<div class="monthly-kpi-tile kpi-accent-green"><div class="kpi-label">Team Avg Utilization</div><div class="kpi-value">' + teamAvgUtil + '%</div>' + deltaPill(teamAvgUtil, prevTeamAvgUtil, 'pp') + '</div>';
+    summaryHtml += '<div class="monthly-kpi-tile kpi-accent-purple"><div class="kpi-label">Active Projects</div><div class="kpi-value">' + activeProjects + '</div>' + deltaPill(activeProjects, prevActiveProjects, '') + '</div>';
+    if (topProj) {
+      summaryHtml += '<div class="monthly-kpi-tile kpi-accent-orange"><div class="kpi-label">Top Project</div><div class="kpi-value kpi-value-text" title="' + topProj[0] + '">' + topProj[0] + '</div><div class="kpi-sub">' + topProjPct + '% of total effort</div></div>';
+    } else {
+      summaryHtml += '<div class="monthly-kpi-tile kpi-accent-orange"><div class="kpi-label">Top Project</div><div class="kpi-value kpi-value-text">\u2014</div><div class="kpi-sub">No entries yet</div></div>';
+    }
     summaryHtml += '</div>';
-    summaryHtml += '<div style="margin-top:14px"><div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Top Projects</div>';
-    topProjects.forEach(([pr, v]) => {
-      const totalPossible = weeks.length * people.length * 100;
-      const pct = totalPossible > 0 ? Math.round((v / totalPossible) * 100) : 0;
-      summaryHtml += '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>' + pr + '</span><span style="color:var(--color-text-secondary)">' + pct + '% of total effort</span></div>';
-    });
+
+    // Quick-stat strip (busiest / lowest person)
+    if (busiestPerson && lowestPerson && busiestPerson[0] !== lowestPerson[0]) {
+      summaryHtml += '<div class="monthly-stat-strip">';
+      summaryHtml += '<div class="stat-strip-item"><div class="stat-strip-label">Highest utilization</div><div class="stat-strip-value">' + busiestPerson[0] + ' <span class="stat-strip-num">' + busiestPerson[1] + '%</span></div></div>';
+      summaryHtml += '<div class="stat-strip-divider"></div>';
+      summaryHtml += '<div class="stat-strip-item"><div class="stat-strip-label">Lowest utilization</div><div class="stat-strip-value">' + lowestPerson[0] + ' <span class="stat-strip-num">' + lowestPerson[1] + '%</span></div></div>';
+      summaryHtml += '</div>';
+    }
+
+    // Top projects with progress bars
+    summaryHtml += '<div class="monthly-top-projects"><div class="monthly-top-projects-title">Top Projects by Team Effort</div>';
+    if (topProjects.length === 0) {
+      summaryHtml += '<div class="insights-empty" style="padding:12px">No project effort logged yet this month</div>';
+    } else {
+      topProjects.forEach(([pr, v], idx) => {
+        const totalPossible = weeks.length * people.length * 100;
+        const pct = totalPossible > 0 ? Math.round((v / totalPossible) * 100) : 0;
+        const barColor = CHART_COLORS[idx % CHART_COLORS.length];
+        summaryHtml += '<div class="top-proj-row">';
+        summaryHtml += '<div class="top-proj-rank">' + (idx + 1) + '</div>';
+        summaryHtml += '<div class="top-proj-main">';
+        summaryHtml += '<div class="top-proj-labels"><span class="top-proj-name">' + pr + '</span><span class="top-proj-pct">' + pct + '%</span></div>';
+        summaryHtml += '<div class="top-proj-bar"><div class="top-proj-bar-fill" style="width:' + Math.max(2, pct) + '%;background:' + barColor + '"></div></div>';
+        summaryHtml += '</div>';
+        summaryHtml += '</div>';
+      });
+    }
     summaryHtml += '</div>';
+
     $('monthly-summary-content').innerHTML = summaryHtml;
 
     // --- Month-over-Month Comparison ---
