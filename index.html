@@ -26,6 +26,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1722,6 +1724,101 @@
     transition: width 0.4s ease;
   }
 
+  /* ─── Monthly Toolbar ─── */
+  .monthly-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+  .monthly-toolbar-actions {
+    display: flex;
+    gap: 8px;
+  }
+  .monthly-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    border: 1px solid var(--color-border, #d1d5db);
+    background: #ffffff;
+    color: var(--color-text, #1f2937);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .monthly-action-btn:hover {
+    background: var(--color-bg, #f9fafb);
+    border-color: var(--color-accent, #1e3a5f);
+  }
+  .monthly-action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .monthly-action-primary {
+    background: var(--color-accent, #1e3a5f);
+    color: #ffffff;
+    border-color: var(--color-accent, #1e3a5f);
+  }
+  .monthly-action-primary:hover {
+    background: var(--color-accent-hover, #152c4a);
+    border-color: var(--color-accent-hover, #152c4a);
+  }
+  .monthly-btn-icon {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  /* ─── PDF Export Mode ─── */
+  .monthly-export-header {
+    background: var(--color-accent, #1e3a5f);
+    color: #ffffff;
+    padding: 20px 24px;
+    border-radius: 10px;
+    margin-bottom: 16px;
+  }
+  .monthly-export-header-title {
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0.85;
+    letter-spacing: 0.02em;
+  }
+  .monthly-export-header-month {
+    font-size: 28px;
+    font-weight: 800;
+    margin-top: 4px;
+    letter-spacing: -0.02em;
+  }
+  .monthly-export-header-sub {
+    font-size: 13px;
+    opacity: 0.85;
+    margin-top: 6px;
+  }
+  .monthly-export-footer {
+    margin-top: 20px;
+    padding: 12px;
+    text-align: center;
+    font-size: 11px;
+    color: var(--color-text-muted);
+    border-top: 1px solid var(--color-border-light, #e5e7eb);
+  }
+
+  /* When exporting, force cards to keep together on a page */
+  .pdf-exporting .insight-card,
+  .pdf-exporting .person-month-card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .pdf-exporting .person-month-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   /* ─── Insights Disclaimer ─── */
   .insights-disclaimer {
     margin: 0 16px 12px;
@@ -2772,45 +2869,65 @@
       <div class="insight-card" style="margin-bottom:16px">
         <div class="insight-card-title">Monthly View</div>
         <div class="insight-card-subtitle">Review a full month of staffing data with month-over-month comparisons</div>
-        <div class="insight-filters" style="margin-top:12px">
+        <div class="monthly-toolbar">
           <div class="insight-filter-group">
             <span class="insight-filter-label">Month</span>
             <select class="insight-select" id="monthly-month-select" data-testid="monthly-month-select"></select>
           </div>
+          <div class="monthly-toolbar-actions">
+            <button type="button" class="monthly-action-btn monthly-action-primary" id="monthly-export-pdf-btn" data-testid="monthly-export-pdf-btn">
+              <span class="monthly-btn-icon">⬇</span> Export PDF
+            </button>
+            <button type="button" class="monthly-action-btn" id="monthly-download-excel-btn" data-testid="monthly-download-excel-btn">
+              <span class="monthly-btn-icon">⬇</span> Backup Excel
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Monthly Summary KPIs -->
-      <div class="insight-card" data-testid="monthly-summary-card">
-        <div class="insight-card-title" id="monthly-summary-title">Summary</div>
-        <div id="monthly-summary-content"></div>
-      </div>
+      <div id="monthly-export-root">
+        <div id="monthly-export-header" class="monthly-export-header" style="display:none">
+          <div class="monthly-export-header-title">Paco's Staffing Tracker — Monthly Report</div>
+          <div class="monthly-export-header-month" id="monthly-export-header-month"></div>
+          <div class="monthly-export-header-sub" id="monthly-export-header-sub"></div>
+        </div>
 
-      <!-- Month-over-Month Comparison -->
-      <div class="insight-card" style="margin-top:16px" data-testid="monthly-mom-card">
-        <div class="insight-card-title">Month-over-Month Comparison</div>
-        <div class="insight-card-subtitle">How this month's allocation differs from the previous month</div>
-        <div id="monthly-mom-content"></div>
-      </div>
+        <!-- Monthly Summary KPIs -->
+        <div class="insight-card" data-testid="monthly-summary-card">
+          <div class="insight-card-title" id="monthly-summary-title">Summary</div>
+          <div id="monthly-summary-content"></div>
+        </div>
 
-      <!-- Monthly Project Share -->
-      <div class="insight-card" style="margin-top:16px" data-testid="monthly-project-card">
-        <div class="insight-card-title">Project Share (Monthly)</div>
-        <div class="insight-card-subtitle">Each project's share of total team effort across the month</div>
-        <div class="chart-container">
-          <canvas id="monthly-project-chart" data-testid="monthly-project-chart"></canvas>
+        <!-- Month-over-Month Comparison -->
+        <div class="insight-card" style="margin-top:16px" data-testid="monthly-mom-card">
+          <div class="insight-card-title">Month-over-Month Comparison</div>
+          <div class="insight-card-subtitle">How this month's allocation differs from the previous month</div>
+          <div id="monthly-mom-content"></div>
+        </div>
+
+        <!-- Monthly Project Share -->
+        <div class="insight-card" style="margin-top:16px" data-testid="monthly-project-card">
+          <div class="insight-card-title">Project Share (Monthly)</div>
+          <div class="insight-card-subtitle">Each project's share of total team effort across the month</div>
+          <div class="chart-container">
+            <canvas id="monthly-project-chart" data-testid="monthly-project-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Monthly Insights -->
+        <div class="insight-card" style="margin-top:16px" data-testid="monthly-insights-card">
+          <div class="insight-card-title">Monthly Insights</div>
+          <div class="insight-card-subtitle">Notable shifts, ramp-ups, and wind-downs</div>
+          <div id="monthly-insights-content"></div>
+        </div>
+
+        <!-- Per-Person Monthly Breakdowns -->
+        <div id="monthly-per-person-container" style="margin-top:16px"></div>
+
+        <div id="monthly-export-footer" class="monthly-export-footer" style="display:none">
+          Generated by Paco's Staffing Tracker • <span id="monthly-export-footer-date"></span>
         </div>
       </div>
-
-      <!-- Monthly Insights -->
-      <div class="insight-card" style="margin-top:16px" data-testid="monthly-insights-card">
-        <div class="insight-card-title">Monthly Insights</div>
-        <div class="insight-card-subtitle">Notable shifts, ramp-ups, and wind-downs</div>
-        <div id="monthly-insights-content"></div>
-      </div>
-
-      <!-- Per-Person Monthly Breakdowns -->
-      <div id="monthly-per-person-container" style="margin-top:16px"></div>
     </div>
 
     <!-- Tab 3: Activity Log -->
@@ -5842,6 +5959,281 @@
     XLSX.writeFile(wb, `pacos-staffing-tracker-export-${today}.xlsx`);
     showToast('Excel file downloaded');
   });
+
+  // ─── Monthly Excel Backup ───
+  function buildMonthlyExcel(monthKey) {
+    if (typeof XLSX === 'undefined') { showToast('SheetJS not loaded'); return null; }
+    if (!monthKey || !appData) return null;
+
+    const people = appData.people || [];
+    const projects = appData.projects || [];
+    const weeks = getWeeksInMonth(monthKey);
+    const prevMonth = getPrevMonthKey(monthKey);
+    const prevWeeks = getWeeksInMonth(prevMonth);
+    const monthName = getMonthName(monthKey);
+
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Monthly Summary
+    const ws1Data = [
+      [`Paco's Staffing Tracker — ${monthName} Monthly Report`],
+      [`Generated: ${new Date().toLocaleString('en-US')}`],
+      [`Weeks covered: ${weeks.join(', ') || 'none'}`],
+      []
+    ];
+    // Per-person average utilization
+    ws1Data.push(['Person Utilization (avg % across weeks they logged)']);
+    ws1Data.push(['Person', `${monthName} Avg`, 'Prev Month Avg', 'Δ (pp)']);
+    people.forEach(p => {
+      let cur = 0, curC = 0, prev = 0, prevC = 0;
+      weeks.forEach(w => {
+        let t = 0; projects.forEach(pr => { t += (appData.entries[`${w}|${p}|${pr}`] || 0); });
+        if (t > 0) { cur += t; curC++; }
+      });
+      prevWeeks.forEach(w => {
+        let t = 0; projects.forEach(pr => { t += (appData.entries[`${w}|${p}|${pr}`] || 0); });
+        if (t > 0) { prev += t; prevC++; }
+      });
+      const curAvg = curC > 0 ? Math.round(cur / curC) : 0;
+      const prevAvg = prevC > 0 ? Math.round(prev / prevC) : 0;
+      ws1Data.push([p, curAvg + '%', prevAvg + '%', (curAvg - prevAvg)]);
+    });
+    ws1Data.push([]);
+    // Per-project team effort share
+    ws1Data.push(['Project Team Effort Share']);
+    ws1Data.push(['Project', `${monthName} %`, 'Prev Month %', 'Δ (pp)']);
+    const curPossible = weeks.length * people.length * 100;
+    const prevPossible = prevWeeks.length * people.length * 100;
+    const projRows = projects.map(pr => {
+      let cur = 0, prev = 0;
+      weeks.forEach(w => people.forEach(p => { cur += (appData.entries[`${w}|${p}|${pr}`] || 0); }));
+      prevWeeks.forEach(w => people.forEach(p => { prev += (appData.entries[`${w}|${p}|${pr}`] || 0); }));
+      const curPct = curPossible > 0 ? Math.round((cur / curPossible) * 100) : 0;
+      const prevPct = prevPossible > 0 ? Math.round((prev / prevPossible) * 100) : 0;
+      return { pr, curPct, prevPct, raw: cur };
+    }).filter(r => r.curPct > 0 || r.prevPct > 0).sort((a, b) => b.curPct - a.curPct);
+    projRows.forEach(r => ws1Data.push([r.pr, r.curPct + '%', r.prevPct + '%', (r.curPct - r.prevPct)]));
+    const ws1 = XLSX.utils.aoa_to_sheet(ws1Data);
+    ws1['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Monthly Summary');
+
+    // Sheet 2: Person × Project matrix for this month (avg % per week they logged)
+    const ws2Data = [[`${monthName} — Avg % by Person × Project`], []];
+    ws2Data.push(['Person', ...projects]);
+    people.forEach(p => {
+      const row = [p];
+      projects.forEach(pr => {
+        let sum = 0, cnt = 0;
+        weeks.forEach(w => {
+          const v = appData.entries[`${w}|${p}|${pr}`] || 0;
+          if (v > 0) { sum += v; cnt++; }
+        });
+        row.push(cnt > 0 ? Math.round(sum / cnt) : '');
+      });
+      ws2Data.push(row);
+    });
+    const ws2 = XLSX.utils.aoa_to_sheet(ws2Data);
+    ws2['!cols'] = [{ wch: 22 }, ...projects.map(pr => ({ wch: Math.max(12, pr.length + 2) }))];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Person x Project');
+
+    // Sheet 3: All entries for month (raw backup)
+    const ws3Data = [['Week', 'Person', 'Project', 'Actual%', 'Forecast%']];
+    weeks.forEach(week => {
+      people.forEach(p => {
+        projects.forEach(pr => {
+          const key = `${week}|${p}|${pr}`;
+          const a = (appData.entries || {})[key] || 0;
+          const f = (appData.forecasts || {})[key] || 0;
+          if (a > 0 || f > 0) ws3Data.push([week, p, pr, a, f]);
+        });
+      });
+    });
+    const ws3 = XLSX.utils.aoa_to_sheet(ws3Data);
+    ws3['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 24 }, { wch: 10 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws3, 'All Entries (Month)');
+
+    // Sheet 4: All entries - full backup (every week we have data for)
+    const allWeeks = [...new Set([...(appData.weeks || []), ...Object.keys(appData.entries || {}).map(k => k.split('|')[0])])].sort();
+    const ws4Data = [['Week', 'Person', 'Project', 'Actual%', 'Forecast%']];
+    allWeeks.forEach(week => {
+      people.forEach(p => {
+        projects.forEach(pr => {
+          const key = `${week}|${p}|${pr}`;
+          const a = (appData.entries || {})[key] || 0;
+          const f = (appData.forecasts || {})[key] || 0;
+          if (a > 0 || f > 0) ws4Data.push([week, p, pr, a, f]);
+        });
+      });
+    });
+    const ws4 = XLSX.utils.aoa_to_sheet(ws4Data);
+    ws4['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 24 }, { wch: 10 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws4, 'All Entries (Full Backup)');
+
+    return wb;
+  }
+
+  function downloadMonthlyExcel(monthKey) {
+    const wb = buildMonthlyExcel(monthKey);
+    if (!wb) return;
+    const monthName = getMonthName(monthKey).replace(' ', '_');
+    XLSX.writeFile(wb, `pacos-staffing-monthly-backup-${monthName}.xlsx`);
+    showToast('Monthly Excel backup downloaded');
+  }
+
+  // ─── Monthly PDF Export ───
+  async function exportMonthlyPDF(monthKey) {
+    if (!monthKey || !appData) return;
+    if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
+      showToast('PDF libraries not loaded yet — try again in a moment');
+      return;
+    }
+
+    const btn = $('monthly-export-pdf-btn');
+    const xlsBtn = $('monthly-download-excel-btn');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="monthly-btn-icon">\u23f3</span> Building PDF...'; }
+    if (xlsBtn) xlsBtn.disabled = true;
+
+    const root = $('monthly-export-root');
+    const header = $('monthly-export-header');
+    const headerMonth = $('monthly-export-header-month');
+    const headerSub = $('monthly-export-header-sub');
+    const footer = $('monthly-export-footer');
+    const footerDate = $('monthly-export-footer-date');
+
+    const monthName = getMonthName(monthKey);
+    const weeks = getWeeksInMonth(monthKey);
+    if (headerMonth) headerMonth.textContent = monthName;
+    if (headerSub) headerSub.textContent = weeks.length + ' week' + (weeks.length !== 1 ? 's' : '') + ' covered \u2022 ' + (appData.people || []).length + ' team members';
+    if (footerDate) footerDate.textContent = new Date().toLocaleString('en-US');
+    if (header) header.style.display = 'block';
+    if (footer) footer.style.display = 'block';
+
+    document.body.classList.add('pdf-exporting');
+
+    // Give charts a moment to finish any pending animations and layout to settle
+    await new Promise(r => setTimeout(r, 600));
+
+    try {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit: 'pt', format: 'letter', orientation: 'portrait' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 28;
+      const usableW = pageW - margin * 2;
+      const usableH = pageH - margin * 2 - 18; // leave room for footer
+
+      // Collect top-level blocks to paginate: header, each insight-card, per-person container, footer
+      const blockSelectors = [
+        '#monthly-export-header',
+        '#panel-monthly [data-testid="monthly-summary-card"]',
+        '#panel-monthly [data-testid="monthly-mom-card"]',
+        '#panel-monthly [data-testid="monthly-project-card"]',
+        '#panel-monthly [data-testid="monthly-insights-card"]'
+      ];
+      const blocks = [];
+      blockSelectors.forEach(sel => {
+        const el = document.querySelector(sel);
+        if (el) blocks.push(el);
+      });
+      // Per-person cards split individually
+      document.querySelectorAll('#panel-monthly .person-month-card').forEach(el => blocks.push(el));
+
+      // Render each block to a canvas
+      const rendered = [];
+      for (const el of blocks) {
+        const canvas = await html2canvas(el, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+          useCORS: true,
+          logging: false,
+          windowWidth: Math.max(el.scrollWidth, 1200)
+        });
+        rendered.push(canvas);
+      }
+
+      // Paginate: each canvas is scaled to fit pageW; stack until pageH exceeded, then break
+      let cursor = margin;
+      let pageIndex = 1;
+
+      const addFooter = (idx, total) => {
+        pdf.setFontSize(9);
+        pdf.setTextColor(140);
+        const txt = "Paco's Staffing Tracker — " + monthName + '  |  Page ' + idx + ' of ' + total;
+        pdf.text(txt, pageW / 2, pageH - 14, { align: 'center' });
+        pdf.setTextColor(0);
+      };
+
+      // First pass: compute each canvas's rendered height at pageW
+      const entries = rendered.map(c => {
+        const w = usableW;
+        const h = (c.height / c.width) * w;
+        return { canvas: c, w, h };
+      });
+
+      // Lay out entries into pages
+      const pages = [[]];
+      let pageUsed = 0;
+      for (const ent of entries) {
+        // If a single block is taller than the usable page, scale it down to fit a full page
+        if (ent.h > usableH) {
+          const scale = usableH / ent.h;
+          ent.w = ent.w * scale;
+          ent.h = ent.h * scale;
+        }
+        if (pageUsed + ent.h + 10 > usableH && pages[pages.length - 1].length > 0) {
+          pages.push([]);
+          pageUsed = 0;
+        }
+        pages[pages.length - 1].push(ent);
+        pageUsed += ent.h + 10;
+      }
+
+      pages.forEach((page, idx) => {
+        if (idx > 0) pdf.addPage();
+        let y = margin;
+        page.forEach(ent => {
+          const imgData = ent.canvas.toDataURL('image/png');
+          const xOffset = margin + (usableW - ent.w) / 2;
+          pdf.addImage(imgData, 'PNG', xOffset, y, ent.w, ent.h, undefined, 'FAST');
+          y += ent.h + 10;
+        });
+        addFooter(idx + 1, pages.length);
+      });
+
+      const fname = 'pacos-staffing-monthly-' + monthName.replace(' ', '_') + '.pdf';
+      pdf.save(fname);
+      showToast('Monthly PDF exported');
+    } catch (err) {
+      console.error('PDF export failed', err);
+      showToast('PDF export failed — check console');
+    } finally {
+      if (header) header.style.display = 'none';
+      if (footer) footer.style.display = 'none';
+      document.body.classList.remove('pdf-exporting');
+      if (btn) { btn.disabled = false; btn.innerHTML = '<span class="monthly-btn-icon">\u2b07</span> Export PDF'; }
+      if (xlsBtn) xlsBtn.disabled = false;
+    }
+  }
+
+  // Wire up Monthly tab buttons
+  const monthlyPdfBtn = $('monthly-export-pdf-btn');
+  const monthlyXlsBtn = $('monthly-download-excel-btn');
+  if (monthlyPdfBtn) {
+    monthlyPdfBtn.addEventListener('click', () => {
+      const sel = $('monthly-month-select');
+      const mk = sel && sel.value ? sel.value : null;
+      if (!mk) { showToast('Select a month first'); return; }
+      exportMonthlyPDF(mk);
+    });
+  }
+  if (monthlyXlsBtn) {
+    monthlyXlsBtn.addEventListener('click', () => {
+      const sel = $('monthly-month-select');
+      const mk = sel && sel.value ? sel.value : null;
+      if (!mk) { showToast('Select a month first'); return; }
+      downloadMonthlyExcel(mk);
+    });
+  }
 
   // ─── Import Excel ───
   let pendingImportData = null;
