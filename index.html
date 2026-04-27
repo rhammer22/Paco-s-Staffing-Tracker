@@ -1819,6 +1819,140 @@
     grid-template-columns: 1fr !important;
   }
 
+  /* ─── Per-Person AvF + Snapshot ─── */
+  .per-person-avf-grid,
+  .per-person-snapshot-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 8px;
+  }
+  @media (max-width: 900px) {
+    .per-person-avf-grid,
+    .per-person-snapshot-grid { grid-template-columns: 1fr; }
+  }
+  .per-person-avf-card,
+  .per-person-snapshot-card {
+    border: 1px solid var(--color-border-light, #e5e7eb);
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .per-person-avf-name,
+  .snapshot-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text, #1f2937);
+    margin-bottom: 6px;
+  }
+  .per-person-avf-chart-wrap {
+    height: 180px;
+    position: relative;
+  }
+
+  .snapshot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--color-border-light, #e5e7eb);
+  }
+  .snapshot-totals { font-size: 11px; color: var(--color-text-secondary); }
+  .snapshot-totals-item { margin-left: 8px; }
+  .snapshot-totals-item strong { color: var(--color-text, #1f2937); font-variant-numeric: tabular-nums; }
+  .snapshot-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .snapshot-col-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 6px;
+  }
+  .snapshot-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 0;
+    font-size: 12px;
+    border-bottom: 1px dashed var(--color-border-light, #e5e7eb);
+  }
+  .snapshot-row:last-of-type { border-bottom: none; }
+  .snapshot-pr {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-secondary);
+  }
+  .snapshot-val {
+    font-weight: 700;
+    color: var(--color-text, #1f2937);
+    font-variant-numeric: tabular-nums;
+  }
+  .snapshot-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 999px;
+  }
+  .snapshot-badge-up   { background: #ecfdf5; color: #059669; }
+  .snapshot-badge-down { background: #fef2f2; color: #dc2626; }
+  .snapshot-empty {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    font-style: italic;
+    padding: 6px 0;
+  }
+  .snapshot-total {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--color-border-light, #e5e7eb);
+    font-size: 11px;
+    color: var(--color-text-secondary);
+  }
+  .snapshot-total strong { color: var(--color-text, #1f2937); font-variant-numeric: tabular-nums; }
+  .snapshot-insights {
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: var(--color-bg, #f9fafb);
+    border-left: 3px solid var(--color-primary, #6366f1);
+    border-radius: 6px;
+  }
+  .snapshot-insights-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+  }
+  .snapshot-insight-item {
+    font-size: 11.5px;
+    padding: 2px 0;
+    color: var(--color-text-secondary);
+    line-height: 1.4;
+  }
+
+  /* When exporting per-person sections, stack them one column for cleaner pages */
+  .pdf-exporting .per-person-avf-grid,
+  .pdf-exporting .per-person-snapshot-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .pdf-exporting .per-person-avf-card,
+  .pdf-exporting .per-person-snapshot-card {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
   /* ─── Insights Disclaimer ─── */
   .insights-disclaimer {
     margin: 0 16px 12px;
@@ -2861,6 +2995,20 @@
         <div class="insight-card-title">Estimation Accuracy by Person</div>
         <div class="insight-card-subtitle">On target = within ±5% of actual</div>
         <div id="admin-accuracy-content"></div>
+      </div>
+
+      <!-- Per-Person AvF Trend Charts -->
+      <div class="insight-card" style="margin-top:16px" data-testid="admin-per-person-avf-card">
+        <div class="insight-card-title">Actual vs Forecast — Per Person</div>
+        <div class="insight-card-subtitle">Each person’s actuals (solid) and forecast (dashed), last 8 weeks plus 4 forecast weeks</div>
+        <div id="admin-per-person-avf-container"></div>
+      </div>
+
+      <!-- Per-Person Weekly Snapshots -->
+      <div class="insight-card" style="margin-top:16px" data-testid="admin-per-person-snapshot-card">
+        <div class="insight-card-title">Weekly Snapshot — Per Person</div>
+        <div class="insight-card-subtitle">Each person’s actuals for last week, forecast for next week, and key insights</div>
+        <div id="admin-per-person-snapshot-container"></div>
       </div>
     </div>
 
@@ -6401,6 +6549,8 @@
     renderAdminAvfTrend(filteredPeople, filteredProjects);
     renderAdminDivergence(filteredPeople, filteredProjects);
     renderAdminAccuracy(filteredPeople, projects);
+    renderAdminPerPersonAvf(filteredPeople, filteredProjects);
+    renderAdminPerPersonSnapshot(filteredPeople, filteredProjects);
   }
 
   function renderAdminUtilization(week, people, mode) {
@@ -7124,6 +7274,249 @@
       `;
       container.appendChild(card);
     });
+  }
+
+  // ─── Per-Person AvF Trend (one chart per person) ───
+  function renderAdminPerPersonAvf(filteredPeople, filteredProjects) {
+    const container = $('admin-per-person-avf-container');
+    if (!container) return;
+
+    // Destroy any prior charts
+    filteredPeople.forEach(p => {
+      destroyChart('admin-per-person-avf-chart-' + p.replace(/[^a-zA-Z0-9]/g, '_'));
+    });
+    container.innerHTML = '';
+
+    if (filteredPeople.length === 0 || filteredProjects.length === 0) {
+      container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--color-text-muted);font-size:13px;">No data</div>';
+      return;
+    }
+
+    // Last 8 weeks with data + 4 forecast weeks ahead of current week
+    const allWeeks = getAllWeeksSorted();
+    const cwk = getCurrentWeek();
+    const nwk = getNextWeek(cwk);
+    const nwk2 = getNextWeek(nwk);
+    const nwk3 = getNextWeek(nwk2);
+    const nwk4 = getNextWeek(nwk3);
+    const histTail = allWeeks.slice(-8);
+    const avfWeeks = [...new Set([...histTail, cwk, nwk, nwk2, nwk3, nwk4])].sort();
+
+    const chartsToRender = [];
+    const cards = [];
+    filteredPeople.forEach(person => {
+      // Build per-project series for this person
+      const datasets = [];
+      let hasAny = false;
+      filteredProjects.forEach((pr, i) => {
+        const color = CHART_COLORS[i % CHART_COLORS.length];
+        const actuals = avfWeeks.map(w => getEntry(w, person, pr));
+        const fcasts = avfWeeks.map(w => getForecast(w, person, pr));
+        const hasA = actuals.some(v => v > 0);
+        const hasF = fcasts.some(v => v > 0);
+        if (!hasA && !hasF) return;
+        hasAny = true;
+        let lastActualIdx = -1;
+        actuals.forEach((v, idx) => { if (v > 0) lastActualIdx = idx; });
+        if (hasA) {
+          datasets.push({
+            label: pr, data: actuals.map(v => v > 0 ? v : null),
+            borderColor: color, backgroundColor: color + '20', borderWidth: 2,
+            tension: 0.3, pointRadius: 3, fill: false, spanGaps: false
+          });
+        }
+        if (hasF && lastActualIdx >= 0) {
+          const fData = avfWeeks.map((w, idx) => {
+            if (idx === lastActualIdx) return actuals[idx];
+            if (fcasts[idx] > 0 && idx > lastActualIdx) return fcasts[idx];
+            return null;
+          });
+          if (fData.some(v => v !== null)) {
+            datasets.push({
+              label: pr + ' (forecast)', data: fData,
+              borderColor: color, backgroundColor: color + '10', borderWidth: 2,
+              borderDash: [6, 4], tension: 0.3,
+              pointRadius: fData.map((v, idx) => (v !== null && idx !== lastActualIdx) ? 4 : 0),
+              pointStyle: 'triangle', fill: false, spanGaps: false
+            });
+          }
+        }
+      });
+
+      const safeId = 'admin-per-person-avf-chart-' + person.replace(/[^a-zA-Z0-9]/g, '_');
+      let html = '<div class="per-person-avf-card">';
+      html += '<div class="per-person-avf-name">' + person + '</div>';
+      if (!hasAny) {
+        html += '<div style="padding:12px;font-size:12px;color:var(--color-text-muted);text-align:center;">No actuals or forecast for the last 8 weeks</div>';
+      } else {
+        html += '<div class="per-person-avf-chart-wrap"><canvas id="' + safeId + '"></canvas></div>';
+        chartsToRender.push({ id: safeId, datasets, labels: avfWeeks });
+      }
+      html += '</div>';
+      cards.push(html);
+    });
+
+    container.innerHTML = '<div class="per-person-avf-grid">' + cards.join('') + '</div>';
+
+    chartsToRender.forEach(c => {
+      createChart(c.id, {
+        type: 'line', data: { labels: c.labels, datasets: c.datasets },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          layout: { padding: { right: 10 } },
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: v => v + '%', font: { size: 10 } }, grid: { color: '#e5e7eb' } },
+            x: { ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true }, grid: { display: false } }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: {
+              font: { family: "'Inter',sans-serif", size: 9 }, padding: 6, boxWidth: 10,
+              filter: (item) => !item.text.includes('(forecast)')
+            }},
+            tooltip: { callbacks: { label: (ctx) => {
+              const lbl = ctx.dataset.label;
+              const base = lbl.replace(' (forecast)', '');
+              const type = lbl.includes('(forecast)') ? 'forecast' : 'actual';
+              return `${base}: ${ctx.raw}% (${type})`;
+            }}}
+          }
+        }
+      });
+    });
+  }
+
+  // ─── Per-Person Weekly Snapshot (this week + next week forecast + insights) ───
+  function renderAdminPerPersonSnapshot(filteredPeople, filteredProjects) {
+    const container = $('admin-per-person-snapshot-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (filteredPeople.length === 0 || filteredProjects.length === 0) {
+      container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--color-text-muted);font-size:13px;">No data</div>';
+      return;
+    }
+
+    // Reference weeks: "last week" actuals, "next week" forecast
+    const cwk = getCurrentWeek();
+    const lastWk = (() => {
+      // Subtract 1 ISO week from cwk
+      const m = cwk.match(/^(\d+)-W(\d+)$/); if (!m) return cwk;
+      let y = parseInt(m[1]); let w = parseInt(m[2]) - 1;
+      if (w < 1) { y -= 1; w = 52; }
+      return y + '-W' + String(w).padStart(2, '0');
+    })();
+    const nextWk = getNextWeek(cwk);
+
+    const allWeeks = getAllWeeksSorted();
+
+    // Compute team avg per project from history (last up to 8 weeks)
+    const teamAvg = {};
+    filteredProjects.forEach(pr => {
+      let s = 0, c = 0;
+      const recent = allWeeks.slice(-8);
+      recent.forEach(w => {
+        filteredPeople.forEach(p => {
+          const v = getEntry(w, p, pr);
+          if (v > 0) { s += v; c++; }
+        });
+      });
+      teamAvg[pr] = c > 0 ? Math.round(s / c) : 0;
+    });
+
+    const cards = [];
+    filteredPeople.forEach(person => {
+      // Last week actuals
+      const lastEntries = filteredProjects.map(pr => ({ pr, v: getEntry(lastWk, person, pr) })).filter(x => x.v > 0).sort((a, b) => b.v - a.v);
+      const lastTotal = lastEntries.reduce((a, b) => a + b.v, 0);
+      // Next week forecast
+      const nextEntries = filteredProjects.map(pr => ({ pr, v: getForecast(nextWk, person, pr) })).filter(x => x.v > 0).sort((a, b) => b.v - a.v);
+      const nextTotal = nextEntries.reduce((a, b) => a + b.v, 0);
+
+      // Personal averages over last 8 weeks for insights
+      const personAvg = {};
+      const recent = allWeeks.slice(-8);
+      filteredProjects.forEach(pr => {
+        let s = 0, c = 0;
+        recent.forEach(w => { const v = getEntry(w, person, pr); if (v > 0) { s += v; c++; } });
+        personAvg[pr] = c > 0 ? Math.round(s / c) : 0;
+      });
+
+      // Build 2-3 insights
+      const insights = [];
+      // 1) Drop-offs: had personal avg ≥5 but 0 last week
+      Object.entries(personAvg).forEach(([pr, avg]) => {
+        if (avg >= 5 && !lastEntries.find(x => x.pr === pr)) {
+          insights.push('Off <strong>' + pr + '</strong> last week (avg ' + avg + '%)');
+        }
+      });
+      // 2) New starts: 0 personal avg but >= 5 last week
+      lastEntries.forEach(e => {
+        if ((personAvg[e.pr] || 0) < 5 && e.v >= 10) {
+          insights.push('Started <strong>' + e.pr + '</strong> at ' + e.v + '%');
+        }
+      });
+      // 3) Biggest jumps vs personal avg
+      const jumps = lastEntries.map(e => ({ pr: e.pr, d: e.v - (personAvg[e.pr] || 0), v: e.v, avg: personAvg[e.pr] || 0 })).filter(x => Math.abs(x.d) >= 10).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
+      jumps.slice(0, 1).forEach(j => {
+        const dir = j.d > 0 ? 'up' : 'down';
+        insights.push('<strong>' + j.pr + '</strong> ' + dir + ' ' + Math.abs(j.d) + 'pp vs avg (' + j.avg + '% \u2192 ' + j.v + '%)');
+      });
+      // 4) Forecast vs last
+      if (lastTotal > 0 && nextTotal > 0) {
+        const totalDiff = nextTotal - lastTotal;
+        if (Math.abs(totalDiff) >= 10) {
+          insights.push('Forecast ' + (totalDiff > 0 ? 'up' : 'down') + ' ' + Math.abs(totalDiff) + 'pp next week');
+        }
+      }
+      // 5) Vacation
+      const vac = (appData.vacationChecks || {})[person];
+      if (vac && vac.wasOut && vac.days && vac.updatedWeek === lastWk) {
+        insights.push('Out <strong>' + vac.days + ' day' + (vac.days > 1 ? 's' : '') + '</strong> last week');
+      }
+      // 6) Capacity flag
+      const cap = (appData.capacityChecks || {})[person];
+      if (cap && cap.hasCapacity) {
+        insights.push('Reported additional capacity available');
+      }
+      const topInsights = insights.slice(0, 3);
+      if (topInsights.length === 0) {
+        if (lastTotal === 0 && nextTotal === 0) {
+          topInsights.push('No actuals or forecast logged');
+        } else {
+          topInsights.push('Steady week \u2014 no major shifts');
+        }
+      }
+
+      const renderEntries = (entries, total) => {
+        if (entries.length === 0) return '<div class="snapshot-empty">Not logged</div>';
+        let html = '';
+        entries.forEach(e => {
+          const teamRef = teamAvg[e.pr] || 0;
+          let badge = '';
+          if (teamRef > 0) {
+            const diff = e.v - teamRef;
+            if (diff >= 10) badge = '<span class="snapshot-badge snapshot-badge-up">\u2191' + diff + ' vs team</span>';
+            else if (diff <= -10) badge = '<span class="snapshot-badge snapshot-badge-down">\u2193' + Math.abs(diff) + ' vs team</span>';
+          }
+          html += '<div class="snapshot-row"><span class="snapshot-pr">' + e.pr + '</span><span class="snapshot-val">' + e.v + '%</span>' + badge + '</div>';
+        });
+        html += '<div class="snapshot-total">Total: <strong>' + total + '%</strong></div>';
+        return html;
+      };
+
+      let html = '<div class="per-person-snapshot-card">';
+      html += '<div class="snapshot-header"><div class="snapshot-name">' + person + '</div>';
+      html += '<div class="snapshot-totals"><span class="snapshot-totals-item">Last wk: <strong>' + lastTotal + '%</strong></span> <span class="snapshot-totals-item">Next wk: <strong>' + nextTotal + '%</strong></span></div></div>';
+      html += '<div class="snapshot-cols">';
+      html += '<div class="snapshot-col"><div class="snapshot-col-title">Last Week (' + lastWk + ') \u2014 Actuals</div>' + renderEntries(lastEntries, lastTotal) + '</div>';
+      html += '<div class="snapshot-col"><div class="snapshot-col-title">Next Week (' + nextWk + ') \u2014 Forecast</div>' + renderEntries(nextEntries, nextTotal) + '</div>';
+      html += '</div>';
+      html += '<div class="snapshot-insights"><div class="snapshot-insights-title">Key Insights</div>' + topInsights.map(i => '<div class="snapshot-insight-item">\u2022 ' + i + '</div>').join('') + '</div>';
+      html += '</div>';
+      cards.push(html);
+    });
+
+    container.innerHTML = '<div class="per-person-snapshot-grid">' + cards.join('') + '</div>';
   }
 
   // ─── Easter Eggs ───
