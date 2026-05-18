@@ -1970,6 +1970,72 @@
   }
 
   /* ─── Overdue Banner ─── */
+  /* ─── Week Context Banner (top of input page) ─── */
+  .week-context-banner {
+    margin: 12px 16px 0;
+    max-width: 640px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 14px 18px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1.5px solid #f59e0b;
+    color: #78350f;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+  }
+  .week-context-banner.current-week {
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+    border-color: #3b82f6;
+    color: #1e3a8a;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  }
+  .week-context-banner-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+    opacity: 0.85;
+  }
+  .week-context-banner-week {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    line-height: 1.2;
+  }
+  .week-context-banner-detail {
+    font-size: 12px;
+    line-height: 1.4;
+    opacity: 0.9;
+  }
+  .week-context-banner-action {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 5px 12px;
+    background: rgba(255,255,255,0.6);
+    border: 1px solid rgba(0,0,0,0.1);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: inherit;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .week-context-banner-action:hover {
+    background: rgba(255,255,255,0.9);
+  }
+  .capacity-week-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    margin-left: 4px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #6b7280;
+    vertical-align: middle;
+  }
+
   .overdue-banner {
     margin: 10px 16px 0;
     max-width: 640px;
@@ -2675,6 +2741,9 @@
     </div>
   </header>
 
+  <!-- Week Context Banner: clearly tells the user which week they're logging -->
+  <div id="week-context-banner" class="week-context-banner" data-testid="week-context-banner"></div>
+
   <!-- Header nav buttons for Insights / Admin -->
   <div class="header-nav">
     <a href="#" class="header-nav-btn" id="my-insights-link" data-testid="my-insights-link">
@@ -2690,7 +2759,7 @@
   <div class="capacity-check-card" id="capacity-check-card" style="margin-top:12px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div>
-        <div class="capacity-check-title">Additional capacity in the next 2 weeks? <span style="font-size:10px;color:#ef4444;font-weight:400">Required</span></div>
+        <div class="capacity-check-title">Additional capacity in the next 2 weeks? <span style="font-size:10px;color:#ef4444;font-weight:400">Required</span> <span class="capacity-week-tag" id="capacity-week-tag"></span></div>
         <div class="capacity-check-toggle">
           <button class="capacity-check-btn" id="capacity-yes-btn">Yes</button>
           <button class="capacity-check-btn" id="capacity-no-btn">No</button>
@@ -2700,7 +2769,7 @@
         </div>
       </div>
       <div style="border-left:1px solid var(--color-border-light);padding-left:16px">
-        <div class="capacity-check-title">Were you on vacation/out this week? <span style="font-size:10px;color:#ef4444;font-weight:400">Required</span></div>
+        <div class="capacity-check-title">Were you on vacation/out during this week? <span style="font-size:10px;color:#ef4444;font-weight:400">Required</span> <span class="capacity-week-tag" id="vacation-week-tag"></span></div>
         <div class="capacity-check-toggle">
           <button class="capacity-check-btn" id="vacation-yes-btn">Yes</button>
           <button class="capacity-check-btn" id="vacation-no-btn">No</button>
@@ -4630,17 +4699,75 @@
   }
 
   // ─── Person Selection ───
+  // Smart default for input page: Sun–Wed defaults to PRIOR week; Thu–Sat defaults to CURRENT week.
+  function getInputDefaultWeek() {
+    const dow = new Date().getDay(); // 0=Sun..6=Sat
+    const cw = getCurrentWeek();
+    return dow <= 3 ? getPrevWeek(cw) : cw;
+  }
+
   function selectPerson(name) {
     currentPerson = name;
-    currentWeek = getCurrentWeek();
+    currentWeek = getInputDefaultWeek();
     headerName.textContent = name;
     renderWeekSelector();
     renderProjectList();
     updateTotal();
+    renderWeekContextBanner();
     checkOverdueBanner();
     loadCapacityCheck();
     loadVacationCheck();
     showScreen('app');
+  }
+
+  // ─── Week Context Banner ───
+  function renderWeekContextBanner() {
+    const banner = $('week-context-banner');
+    if (!banner || !currentWeek) return;
+    const cw = getCurrentWeek();
+    const isCurrentWeek = currentWeek === cw;
+    const isPriorWeek = currentWeek === getPrevWeek(cw);
+    const nextWk = getNextWeek(currentWeek);
+    const dow = new Date().getDay();
+    const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const todayLabel = dayNames[dow];
+
+    let title, weekLine, detail, action = '';
+    if (isCurrentWeek) {
+      banner.className = 'week-context-banner current-week';
+      title = '\u2713 You are logging the CURRENT week';
+      weekLine = currentWeek + '  \u00B7  ' + getWeekDateRange(currentWeek);
+      detail = 'Actuals = this week (' + getWeekDateRange(currentWeek) + ').  Forecast = next week (' + getWeekDateRange(nextWk) + ').';
+    } else if (isPriorWeek) {
+      banner.className = 'week-context-banner';
+      title = '\u26A0 You are logging LAST week (recommended on ' + todayLabel + ')';
+      weekLine = currentWeek + '  \u00B7  ' + getWeekDateRange(currentWeek);
+      detail = 'Actuals = last week (' + getWeekDateRange(currentWeek) + ').  Forecast = this week (' + getWeekDateRange(nextWk) + '). If you meant to log a different week, change it in the dropdown above.';
+      action = '<a class="week-context-banner-action" id="week-banner-switch-current">Switch to current week (' + cw + ')</a>';
+    } else {
+      banner.className = 'week-context-banner';
+      title = '\u26A0 You are logging a non-default week';
+      weekLine = currentWeek + '  \u00B7  ' + getWeekDateRange(currentWeek);
+      detail = 'This is not the recommended week to log right now. Most people should log ' + (dow <= 3 ? 'last week (' + getPrevWeek(cw) + ')' : 'this week (' + cw + ')') + ' on a ' + todayLabel + '.';
+      action = '<a class="week-context-banner-action" id="week-banner-switch-default">Switch to recommended week (' + getInputDefaultWeek() + ')</a>';
+    }
+
+    banner.innerHTML = '<div class="week-context-banner-title">' + title + '</div>'
+      + '<div class="week-context-banner-week">' + weekLine + '</div>'
+      + '<div class="week-context-banner-detail">' + detail + '</div>'
+      + action;
+
+    const sc = $('week-banner-switch-current');
+    if (sc) sc.addEventListener('click', (e) => { e.preventDefault(); weekSelect.value = cw; currentWeek = cw; renderProjectList(); updateTotal(); renderWeekContextBanner(); loadCapacityCheck(); loadVacationCheck(); });
+    const sd = $('week-banner-switch-default');
+    if (sd) sd.addEventListener('click', (e) => { e.preventDefault(); const def = getInputDefaultWeek(); weekSelect.value = def; currentWeek = def; renderProjectList(); updateTotal(); renderWeekContextBanner(); loadCapacityCheck(); loadVacationCheck(); });
+
+    // Update the capacity/vacation week tags
+    const ct = $('capacity-week-tag');
+    const vt = $('vacation-week-tag');
+    const tagText = 'for ' + currentWeek;
+    if (ct) ct.textContent = tagText;
+    if (vt) vt.textContent = tagText;
   }
 
   // ─── Overdue Banner ───
@@ -4703,17 +4830,23 @@
         currentWeek = targetWeek;
         renderProjectList();
         updateTotal();
+        renderWeekContextBanner();
+        loadCapacityCheck();
+        loadVacationCheck();
         banner.style.display = 'none';
       });
     });
   }
 
   // --- Capacity Check ---
+  // Capacity / vacation responses are keyed by week so the questions reset cleanly
+  // each new week and the report knows which week a response applies to.
   function setCapacity(hasCapacity) {
     if (!currentPerson || !appData) return;
     const yesBtn = $('capacity-yes-btn');
     const noBtn = $('capacity-no-btn');
     const commentBox = $('capacity-comment-box');
+    const wk = currentWeek || getCurrentWeek();
     
     yesBtn.classList.toggle('active', hasCapacity);
     noBtn.classList.toggle('active-no', !hasCapacity);
@@ -4722,7 +4855,10 @@
     if (!appData.capacityChecks) appData.capacityChecks = {};
     if (!appData.capacityChecks[currentPerson]) appData.capacityChecks[currentPerson] = {};
     appData.capacityChecks[currentPerson].hasCapacity = hasCapacity;
-    appData.capacityChecks[currentPerson].updatedWeek = getCurrentWeek();
+    appData.capacityChecks[currentPerson].updatedWeek = wk;
+    // Per-week history
+    if (!appData.capacityChecks[currentPerson].byWeek) appData.capacityChecks[currentPerson].byWeek = {};
+    appData.capacityChecks[currentPerson].byWeek[wk] = { hasCapacity, comment: appData.capacityChecks[currentPerson].comment || '' };
     if (!hasCapacity) {
       appData.capacityChecks[currentPerson].comment = '';
       if ($('capacity-comment')) $('capacity-comment').value = '';
@@ -4763,13 +4899,22 @@
     const commentBox = $('capacity-comment-box');
     const ci = $('capacity-comment');
     if (!yesBtn || !currentPerson || !appData) return;
-    const myCheck = (appData.capacityChecks || {})[currentPerson];
-    if (myCheck && myCheck.updatedWeek) {
-      yesBtn.classList.toggle('active', myCheck.hasCapacity === true);
-      noBtn.classList.toggle('active-no', myCheck.hasCapacity === false);
-      commentBox.classList.toggle('visible', myCheck.hasCapacity === true);
-      if (ci) ci.value = myCheck.comment || '';
+    const wk = currentWeek || getCurrentWeek();
+    // Prefer per-week record; fall back to legacy single record ONLY if its updatedWeek matches this week.
+    let resp = null;
+    const personEntry = (appData.capacityChecks || {})[currentPerson];
+    if (personEntry && personEntry.byWeek && personEntry.byWeek[wk]) {
+      resp = personEntry.byWeek[wk];
+    } else if (personEntry && personEntry.updatedWeek === wk) {
+      resp = { hasCapacity: personEntry.hasCapacity, comment: personEntry.comment || '' };
+    }
+    if (resp) {
+      yesBtn.classList.toggle('active', resp.hasCapacity === true);
+      noBtn.classList.toggle('active-no', resp.hasCapacity === false);
+      commentBox.classList.toggle('visible', resp.hasCapacity === true);
+      if (ci) ci.value = resp.comment || '';
     } else {
+      // No response yet for THIS week — reset UI to neutral so the user must answer fresh.
       yesBtn.classList.remove('active');
       noBtn.classList.remove('active-no');
       commentBox.classList.remove('visible');
@@ -4783,15 +4928,19 @@
     const yb = $('vacation-yes-btn');
     const nb = $('vacation-no-btn');
     const dbox = $('vacation-days-box');
+    const wk = currentWeek || getCurrentWeek();
     yb.classList.toggle('active', wasOut);
     nb.classList.toggle('active-no', !wasOut);
     dbox.classList.toggle('visible', wasOut);
     if (!appData.vacationChecks) appData.vacationChecks = {};
     if (!appData.vacationChecks[currentPerson]) appData.vacationChecks[currentPerson] = {};
     appData.vacationChecks[currentPerson].wasOut = wasOut;
-    appData.vacationChecks[currentPerson].updatedWeek = getCurrentWeek();
-    if (!wasOut) appData.vacationChecks[currentPerson].days = 0;
-    else appData.vacationChecks[currentPerson].days = parseInt($('vacation-days').value) || 1;
+    appData.vacationChecks[currentPerson].updatedWeek = wk;
+    const days = !wasOut ? 0 : (parseInt($('vacation-days').value) || 1);
+    appData.vacationChecks[currentPerson].days = days;
+    // Per-week history
+    if (!appData.vacationChecks[currentPerson].byWeek) appData.vacationChecks[currentPerson].byWeek = {};
+    appData.vacationChecks[currentPerson].byWeek[wk] = { wasOut, days };
     saveCapacityDebounced();
   }
   window.setVacation = setVacation;
@@ -4802,12 +4951,19 @@
     const dbox = $('vacation-days-box');
     const dsel = $('vacation-days');
     if (!yb || !currentPerson || !appData) return;
-    const check = (appData.vacationChecks || {})[currentPerson];
-    if (check && check.updatedWeek === getCurrentWeek()) {
-      yb.classList.toggle('active', check.wasOut === true);
-      nb.classList.toggle('active-no', check.wasOut === false);
-      dbox.classList.toggle('visible', check.wasOut === true);
-      if (dsel && check.days) dsel.value = String(check.days);
+    const wk = currentWeek || getCurrentWeek();
+    let resp = null;
+    const personEntry = (appData.vacationChecks || {})[currentPerson];
+    if (personEntry && personEntry.byWeek && personEntry.byWeek[wk]) {
+      resp = personEntry.byWeek[wk];
+    } else if (personEntry && personEntry.updatedWeek === wk) {
+      resp = { wasOut: personEntry.wasOut, days: personEntry.days };
+    }
+    if (resp) {
+      yb.classList.toggle('active', resp.wasOut === true);
+      nb.classList.toggle('active-no', resp.wasOut === false);
+      dbox.classList.toggle('visible', resp.wasOut === true);
+      if (dsel && resp.days) dsel.value = String(resp.days);
     } else {
       yb.classList.remove('active');
       nb.classList.remove('active-no');
@@ -4831,25 +4987,45 @@
     if (vnb) vnb.addEventListener('click', () => setVacation(false));
     if (vds) vds.addEventListener('change', () => {
       if (appData && currentPerson && appData.vacationChecks && appData.vacationChecks[currentPerson]) {
-        appData.vacationChecks[currentPerson].days = parseInt(vds.value) || 1;
+        const wk = currentWeek || getCurrentWeek();
+        const days = parseInt(vds.value) || 1;
+        appData.vacationChecks[currentPerson].days = days;
+        const bw = appData.vacationChecks[currentPerson].byWeek = appData.vacationChecks[currentPerson].byWeek || {};
+        if (bw[wk]) bw[wk].days = days;
         saveCapacityDebounced();
       }
     });
   })();
 
-  function renderCapacityResponses(containerId) {
+  // Look up a person's capacity response for a specific week.
+  // Checks the per-week byWeek map first; falls back to the legacy single record only if updatedWeek matches.
+  function getCapacityForWeek(person, week) {
+    if (!appData) return null;
+    const entry = (appData.capacityChecks || {})[person];
+    if (!entry) return null;
+    if (entry.byWeek && entry.byWeek[week]) return entry.byWeek[week];
+    if (entry.updatedWeek === week) return { hasCapacity: entry.hasCapacity, comment: entry.comment || '' };
+    return null;
+  }
+  function getVacationForWeek(person, week) {
+    if (!appData) return null;
+    const entry = (appData.vacationChecks || {})[person];
+    if (!entry) return null;
+    if (entry.byWeek && entry.byWeek[week]) return entry.byWeek[week];
+    if (entry.updatedWeek === week) return { wasOut: entry.wasOut, days: entry.days };
+    return null;
+  }
+
+  function renderCapacityResponses(containerId, week) {
     const container = $(containerId);
     if (!container || !appData) return;
-    const checks = appData.capacityChecks || {};
     const people = appData.people || [];
-    const cw = getCurrentWeek();
-    const pw = getPrevWeek(cw);
+    const targetWeek = week || getCurrentWeek();
     if (people.length === 0) { container.innerHTML = '<div class="insights-empty">No responses yet</div>'; return; }
-    let html = '<div class="capacity-responses">';
+    let html = '<div class="capacity-responses"><div style="font-size:11px;color:var(--color-text-muted);margin-bottom:6px">Responses for ' + targetWeek + '</div>';
     people.forEach(person => {
-      const check = checks[person];
-      const isRecent = check && (check.updatedWeek === cw || check.updatedWeek === pw);
-      if (!check || !isRecent) {
+      const check = getCapacityForWeek(person, targetWeek);
+      if (!check) {
         html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No response</div></div></div>';
       } else if (check.hasCapacity) {
         html += '<div class="capacity-response-row has-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">Yes \u2014 has capacity</div>' + (check.comment ? '<div class="capacity-response-comment">\u201C' + check.comment + '\u201D</div>' : '') + '</div></div>';
@@ -4861,19 +5037,16 @@
     container.innerHTML = html;
   }
 
-  function renderVacationResponses(containerId) {
+  function renderVacationResponses(containerId, week) {
     const container = $(containerId);
     if (!container || !appData) return;
-    const vacChecks = appData.vacationChecks || {};
     const people = appData.people || [];
-    const cw = getCurrentWeek();
-    const pw = getPrevWeek(cw);
+    const targetWeek = week || getCurrentWeek();
     if (people.length === 0) { container.innerHTML = '<div class="insights-empty">No responses yet</div>'; return; }
-    let html = '<div class="capacity-responses">';
+    let html = '<div class="capacity-responses"><div style="font-size:11px;color:var(--color-text-muted);margin-bottom:6px">Responses for ' + targetWeek + '</div>';
     people.forEach(person => {
-      const vac = vacChecks[person];
-      const isRecent = vac && (vac.updatedWeek === cw || vac.updatedWeek === pw);
-      if (!isRecent || !vac) {
+      const vac = getVacationForWeek(person, targetWeek);
+      if (!vac) {
         html += '<div class="capacity-response-row no-capacity"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status">No response</div></div></div>';
       } else if (vac.wasOut) {
         html += '<div class="capacity-response-row" style="background:#fffbeb;border-left-color:#d97706"><div class="capacity-response-name">' + person + '</div><div><div class="capacity-response-status" style="color:#d97706">Out ' + vac.days + ' day' + (vac.days > 1 ? 's' : '') + '</div></div></div>';
@@ -4918,6 +5091,9 @@
       currentWeek = weekSelect.value;
       renderProjectList();
       updateTotal();
+      renderWeekContextBanner();
+      loadCapacityCheck();
+      loadVacationCheck();
     };
   }
 
@@ -5068,11 +5244,12 @@
   }
 
   async function performSave() {
-    // Check capacity question is answered
-    const capChecks = (appData.capacityChecks || {})[currentPerson];
-    const vacChecks = (appData.vacationChecks || {})[currentPerson];
-    const capMissing = !capChecks || capChecks.hasCapacity === undefined || capChecks.hasCapacity === null;
-    const vacMissing = !vacChecks || vacChecks.wasOut === undefined || vacChecks.wasOut === null || vacChecks.updatedWeek !== getCurrentWeek();
+    // Capacity + vacation must be answered FOR THE WEEK BEING LOGGED, not just the calendar current week.
+    const targetWk = currentWeek || getCurrentWeek();
+    const capResp = getCapacityForWeek(currentPerson, targetWk);
+    const vacResp = getVacationForWeek(currentPerson, targetWk);
+    const capMissing = !capResp || capResp.hasCapacity === undefined || capResp.hasCapacity === null;
+    const vacMissing = !vacResp || vacResp.wasOut === undefined || vacResp.wasOut === null;
     if (capMissing || vacMissing) {
       const card = $('capacity-check-card');
       if (card) {
@@ -6540,8 +6717,8 @@
     renderAdminNotLogged(selectedWeek, people, mode);
     const adminInsights = generateInsights(selectedWeek, filteredPeople, filteredProjects, null);
     renderInsightsHTML('admin-notable-changes-content', adminInsights);
-    renderCapacityResponses('admin-capacity-responses');
-    renderVacationResponses('admin-vacation-responses');
+    renderCapacityResponses('admin-capacity-responses', selectedWeek);
+    renderVacationResponses('admin-vacation-responses', selectedWeek);
     renderAdminBreakdown(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminPieChart(selectedWeek, filteredPeople, filteredProjects, mode);
     renderAdminProjectStaffing(selectedWeek, filteredPeople, filteredProjects, mode);
