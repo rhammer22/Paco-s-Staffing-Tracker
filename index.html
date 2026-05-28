@@ -4683,11 +4683,10 @@
   // ─── Login Screen ───
   function renderLoginScreen() {
     personButtons.innerHTML = '';
-    const people = [...(appData.people || [])].sort((a, b) => {
-      const lastA = a.trim().split(/\s+/).pop().toLowerCase();
-      const lastB = b.trim().split(/\s+/).pop().toLowerCase();
-      return lastA.localeCompare(lastB) || a.localeCompare(b);
-    });
+    // Alphabetical by full name (first name first).
+    const people = [...(appData.people || [])].sort((a, b) =>
+      a.toLowerCase().localeCompare(b.toLowerCase())
+    );
     people.forEach((name) => {
       const btn = document.createElement('button');
       btn.className = 'person-btn';
